@@ -1,0 +1,834 @@
+<html>
+  <head>
+  <title>searchTestClasses.py</title>
+  </head>
+  <body>
+  <h3>searchTestClasses.py (<a href="../searchTestClasses.py">original</a>)</h3>
+  <hr>
+  <pre>
+<span style="color: green; font-style: italic"># searchTestClasses.py
+# --------------------
+# Licensing Information:  You are free to use or extend these projects for
+# educational purposes provided that (1) you do not distribute or publish
+# solutions, (2) you retain this notice, and (3) you provide clear
+# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
+# 
+# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
+# The core projects and autograders were primarily created by John DeNero
+# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
+# Student side autograding was added by Brad Miller, Nick Hay, and
+# Pieter Abbeel (pabbeel@cs.berkeley.edu).
+
+
+</span><span style="color: blue; font-weight: bold">import </span>re
+<span style="color: blue; font-weight: bold">import </span>testClasses
+<span style="color: blue; font-weight: bold">import </span>textwrap
+
+<span style="color: green; font-style: italic"># import project specific code
+</span><span style="color: blue; font-weight: bold">import </span>layout
+<span style="color: blue; font-weight: bold">import </span>pacman
+<span style="color: blue; font-weight: bold">from </span>search <span style="color: blue; font-weight: bold">import </span>SearchProblem
+
+<span style="color: green; font-style: italic"># helper function for printing solutions in solution files
+</span><span style="color: blue; font-weight: bold">def </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">):
+    </span><span style="color: blue; font-weight: bold">if </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) == </span>type<span style="font-weight: bold">([]):
+        </span><span style="color: blue; font-weight: bold">return </span><span style="color: red">'\n'</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>textwrap<span style="font-weight: bold">.</span>wrap<span style="font-weight: bold">(</span><span style="color: red">' '</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">)))
+    </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+        </span><span style="color: blue; font-weight: bold">return </span>str<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">)
+
+
+
+
+</span><span style="color: blue; font-weight: bold">def </span>followAction<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">):
+  </span><span style="color: blue; font-weight: bold">for </span>successor1<span style="font-weight: bold">, </span>action1<span style="font-weight: bold">, </span>cost1 <span style="color: blue; font-weight: bold">in </span>problem<span style="font-weight: bold">.</span>getSuccessors<span style="font-weight: bold">(</span>state<span style="font-weight: bold">):
+    </span><span style="color: blue; font-weight: bold">if </span>action <span style="font-weight: bold">== </span>action1<span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">return </span>successor1
+  <span style="color: blue; font-weight: bold">return </span><span style="color: blue">None
+
+</span><span style="color: blue; font-weight: bold">def </span>followPath<span style="font-weight: bold">(</span>path<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">):
+  </span>state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+  </span>states <span style="font-weight: bold">= [</span>state<span style="font-weight: bold">]
+  </span><span style="color: blue; font-weight: bold">for </span>action <span style="color: blue; font-weight: bold">in </span>path<span style="font-weight: bold">:
+    </span>state <span style="font-weight: bold">= </span>followAction<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+    </span>states<span style="font-weight: bold">.</span>append<span style="font-weight: bold">(</span>state<span style="font-weight: bold">)
+  </span><span style="color: blue; font-weight: bold">return </span>states
+
+<span style="color: blue; font-weight: bold">def </span>checkSolution<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>path<span style="font-weight: bold">):
+  </span>state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+  </span><span style="color: blue; font-weight: bold">for </span>action <span style="color: blue; font-weight: bold">in </span>path<span style="font-weight: bold">:
+    </span>state <span style="font-weight: bold">= </span>followAction<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+  </span><span style="color: blue; font-weight: bold">return </span>problem<span style="font-weight: bold">.</span>isGoalState<span style="font-weight: bold">(</span>state<span style="font-weight: bold">)
+
+</span><span style="color: green; font-style: italic"># Search problem on a plain graph
+</span><span style="color: blue; font-weight: bold">class </span>GraphSearch<span style="font-weight: bold">(</span>SearchProblem<span style="font-weight: bold">):
+
+    </span><span style="color: green; font-style: italic"># Read in the state graph; define start/end states, edges and costs
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>graph_text<span style="font-weight: bold">):
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>expanded_states <span style="font-weight: bold">= []
+        </span>lines <span style="font-weight: bold">= </span>graph_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)
+        </span>r <span style="font-weight: bold">= </span>re<span style="font-weight: bold">.</span>match<span style="font-weight: bold">(</span><span style="color: red">'start_state:(.*)'</span><span style="font-weight: bold">, </span>lines<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">])
+        </span><span style="color: blue; font-weight: bold">if </span>r <span style="font-weight: bold">== </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Broken graph:"
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">'"""%s"""' </span><span style="font-weight: bold">% </span>graph_text
+            <span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"GraphSearch graph specification start_state not found or incorrect on line:" </span><span style="font-weight: bold">+ </span>l<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>start_state <span style="font-weight: bold">= </span>r<span style="font-weight: bold">.</span>group<span style="font-weight: bold">(</span><span style="color: red">1</span><span style="font-weight: bold">).</span>strip<span style="font-weight: bold">()
+        </span>r <span style="font-weight: bold">= </span>re<span style="font-weight: bold">.</span>match<span style="font-weight: bold">(</span><span style="color: red">'goal_states:(.*)'</span><span style="font-weight: bold">, </span>lines<span style="font-weight: bold">[</span><span style="color: red">1</span><span style="font-weight: bold">])
+        </span><span style="color: blue; font-weight: bold">if </span>r <span style="font-weight: bold">== </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Broken graph:"
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">'"""%s"""' </span><span style="font-weight: bold">% </span>graph_text
+            <span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"GraphSearch graph specification goal_states not found or incorrect on line:" </span><span style="font-weight: bold">+ </span>l<span style="font-weight: bold">)
+        </span>goals <span style="font-weight: bold">= </span>r<span style="font-weight: bold">.</span>group<span style="font-weight: bold">(</span><span style="color: red">1</span><span style="font-weight: bold">).</span>split<span style="font-weight: bold">()
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>goals <span style="font-weight: bold">= </span>map<span style="font-weight: bold">(</span>str<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">, </span>goals<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors <span style="font-weight: bold">= {}
+        </span>all_states <span style="font-weight: bold">= </span>set<span style="font-weight: bold">()
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>orderedSuccessorTuples <span style="font-weight: bold">= []
+        </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span>lines<span style="font-weight: bold">[</span><span style="color: red">2</span><span style="font-weight: bold">:]:
+            </span><span style="color: blue; font-weight: bold">if </span>len<span style="font-weight: bold">(</span>l<span style="font-weight: bold">.</span>split<span style="font-weight: bold">()) == </span><span style="color: red">3</span><span style="font-weight: bold">:
+                </span>start<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>next_state <span style="font-weight: bold">= </span>l<span style="font-weight: bold">.</span>split<span style="font-weight: bold">()
+                </span>cost <span style="font-weight: bold">= </span><span style="color: red">1
+            </span><span style="color: blue; font-weight: bold">elif </span>len<span style="font-weight: bold">(</span>l<span style="font-weight: bold">.</span>split<span style="font-weight: bold">()) == </span><span style="color: red">4</span><span style="font-weight: bold">:
+                </span>start<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>next_state<span style="font-weight: bold">, </span>cost <span style="font-weight: bold">= </span>l<span style="font-weight: bold">.</span>split<span style="font-weight: bold">()
+            </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+                </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Broken graph:"
+                </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">'"""%s"""' </span><span style="font-weight: bold">% </span>graph_text
+                <span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Invalid line in GraphSearch graph specification on line:" </span><span style="font-weight: bold">+ </span>l<span style="font-weight: bold">)
+            </span>cost <span style="font-weight: bold">= </span>float<span style="font-weight: bold">(</span>cost<span style="font-weight: bold">)
+            </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>orderedSuccessorTuples<span style="font-weight: bold">.</span>append<span style="font-weight: bold">((</span>start<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>next_state<span style="font-weight: bold">, </span>cost<span style="font-weight: bold">))
+            </span>all_states<span style="font-weight: bold">.</span>add<span style="font-weight: bold">(</span>start<span style="font-weight: bold">)
+            </span>all_states<span style="font-weight: bold">.</span>add<span style="font-weight: bold">(</span>next_state<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">if </span>start <span style="color: blue; font-weight: bold">not in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">:
+                </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">[</span>start<span style="font-weight: bold">] = []
+            </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">[</span>start<span style="font-weight: bold">].</span>append<span style="font-weight: bold">((</span>next_state<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>cost<span style="font-weight: bold">))
+        </span><span style="color: blue; font-weight: bold">for </span>s <span style="color: blue; font-weight: bold">in </span>all_states<span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">if </span>s <span style="color: blue; font-weight: bold">not in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">:
+                </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">[</span>s<span style="font-weight: bold">] = []
+
+    </span><span style="color: green; font-style: italic"># Get start state
+    </span><span style="color: blue; font-weight: bold">def </span>getStartState<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">):
+        </span><span style="color: blue; font-weight: bold">return </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>start_state
+
+    <span style="color: green; font-style: italic"># Check if a state is a goal state
+    </span><span style="color: blue; font-weight: bold">def </span>isGoalState<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>state<span style="font-weight: bold">):
+        </span><span style="color: blue; font-weight: bold">return </span>state <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>goals
+
+    <span style="color: green; font-style: italic"># Get all successors of a state
+    </span><span style="color: blue; font-weight: bold">def </span>getSuccessors<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>state<span style="font-weight: bold">):
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>expanded_states<span style="font-weight: bold">.</span>append<span style="font-weight: bold">(</span>state<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return </span>list<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">[</span>state<span style="font-weight: bold">])
+
+    </span><span style="color: green; font-style: italic"># Calculate total cost of a sequence of actions
+    </span><span style="color: blue; font-weight: bold">def </span>getCostOfActions<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>actions<span style="font-weight: bold">):
+        </span>total_cost <span style="font-weight: bold">= </span><span style="color: red">0
+        </span>state <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>start_state
+        <span style="color: blue; font-weight: bold">for </span>a <span style="color: blue; font-weight: bold">in </span>actions<span style="font-weight: bold">:
+            </span>successors <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors<span style="font-weight: bold">[</span>state<span style="font-weight: bold">]
+            </span>match <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">False
+            for </span><span style="font-weight: bold">(</span>next_state<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>cost<span style="font-weight: bold">) </span><span style="color: blue; font-weight: bold">in </span>successors<span style="font-weight: bold">:
+                </span><span style="color: blue; font-weight: bold">if </span>a <span style="font-weight: bold">== </span>action<span style="font-weight: bold">:
+                    </span>state <span style="font-weight: bold">= </span>next_state
+                    total_cost <span style="font-weight: bold">+= </span>cost
+                    match <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">True
+            if not </span>match<span style="font-weight: bold">:
+                </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">'invalid action sequence'
+                </span>sys<span style="font-weight: bold">.</span>exit<span style="font-weight: bold">(</span><span style="color: red">1</span><span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return </span>total_cost
+
+    <span style="color: green; font-style: italic"># Return a list of all states on which 'getSuccessors' was called
+    </span><span style="color: blue; font-weight: bold">def </span>getExpandedStates<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">):
+        </span><span style="color: blue; font-weight: bold">return </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>expanded_states
+
+    <span style="color: blue; font-weight: bold">def </span>__str__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">):
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>successors
+        edges <span style="font-weight: bold">= [</span><span style="color: red">"%s %s %s %s" </span><span style="font-weight: bold">% </span>t <span style="color: blue; font-weight: bold">for </span>t <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>orderedSuccessorTuples<span style="font-weight: bold">]
+        </span><span style="color: blue; font-weight: bold">return </span>\
+<span style="color: darkred">"""start_state: %s
+goal_states: %s
+%s""" </span><span style="font-weight: bold">% (</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>start_state<span style="font-weight: bold">, </span><span style="color: red">" "</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>goals<span style="font-weight: bold">), </span><span style="color: red">"\n"</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>edges<span style="font-weight: bold">))
+
+
+
+</span><span style="color: blue; font-weight: bold">def </span>parseHeuristic<span style="font-weight: bold">(</span>heuristicText<span style="font-weight: bold">):
+    </span>heuristic <span style="font-weight: bold">= {}
+    </span><span style="color: blue; font-weight: bold">for </span>line <span style="color: blue; font-weight: bold">in </span>heuristicText<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">):
+        </span>tokens <span style="font-weight: bold">= </span>line<span style="font-weight: bold">.</span>split<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">if </span>len<span style="font-weight: bold">(</span>tokens<span style="font-weight: bold">) != </span><span style="color: red">2</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Broken heuristic:"
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">'"""%s"""' </span><span style="font-weight: bold">% </span>graph_text
+            <span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"GraphSearch heuristic specification broken:" </span><span style="font-weight: bold">+ </span>l<span style="font-weight: bold">)
+        </span>state<span style="font-weight: bold">, </span>h <span style="font-weight: bold">= </span>tokens
+        heuristic<span style="font-weight: bold">[</span>state<span style="font-weight: bold">] = </span>float<span style="font-weight: bold">(</span>h<span style="font-weight: bold">)
+
+    </span><span style="color: blue; font-weight: bold">def </span>graphHeuristic<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">=</span><span style="color: blue">None</span><span style="font-weight: bold">):
+        </span><span style="color: blue; font-weight: bold">if </span>state <span style="color: blue; font-weight: bold">in </span>heuristic<span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">return </span>heuristic<span style="font-weight: bold">[</span>state<span style="font-weight: bold">]
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span>pp <span style="font-weight: bold">= </span>pprint<span style="font-weight: bold">.</span>PrettyPrinter<span style="font-weight: bold">(</span>indent<span style="font-weight: bold">=</span><span style="color: red">4</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Heuristic:"
+            </span>pp<span style="font-weight: bold">.</span>pprint<span style="font-weight: bold">(</span>heuristic<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Graph heuristic called with invalid state: " </span><span style="font-weight: bold">+ </span>str<span style="font-weight: bold">(</span>state<span style="font-weight: bold">))
+
+    </span><span style="color: blue; font-weight: bold">return </span>graphHeuristic
+
+
+<span style="color: blue; font-weight: bold">class </span>GraphSearchTest<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>GraphSearchTest<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>graph_text <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'graph'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'algorithm'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>diagram <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'diagram'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>exactExpansionOrder <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">.</span>get<span style="font-weight: bold">(</span><span style="color: red">'exactExpansionOrder'</span><span style="font-weight: bold">, </span><span style="color: red">'True'</span><span style="font-weight: bold">).</span>lower<span style="font-weight: bold">() == </span><span style="color: red">"true"
+        </span><span style="color: blue; font-weight: bold">if </span><span style="color: red">'heuristic' </span><span style="color: blue; font-weight: bold">in </span>testDict<span style="font-weight: bold">:
+            </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristic <span style="font-weight: bold">= </span>parseHeuristic<span style="font-weight: bold">(</span>testDict<span style="font-weight: bold">[</span><span style="color: red">'heuristic'</span><span style="font-weight: bold">])
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristic <span style="font-weight: bold">= </span><span style="color: blue">None
+
+    </span><span style="color: green; font-style: italic"># Note that the return type of this function is a tripple:
+    # (solution, expanded states, error message)
+    </span><span style="color: blue; font-weight: bold">def </span>getSolInfo<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>search<span style="font-weight: bold">):
+        </span>alg <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg<span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>GraphSearch<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>graph_text<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristic <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span>solution <span style="font-weight: bold">= </span>alg<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristic<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span>solution <span style="font-weight: bold">= </span>alg<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>type<span style="font-weight: bold">([]):
+            </span><span style="color: blue; font-weight: bold">return </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: red">'The result of %s must be a list. (Instead, it is %s)' </span><span style="font-weight: bold">% (</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg<span style="font-weight: bold">, </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+
+        </span><span style="color: blue; font-weight: bold">return </span>solution<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">.</span>getExpandedStates<span style="font-weight: bold">(), </span><span style="color: blue">None
+
+    </span><span style="color: green; font-style: italic"># Run student code.  If an error message is returned, print error and return false.
+    # If a good solution is returned, printn the solution and return true; otherwise,
+    # print both the correct and student's solution and return false.
+    </span><span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>gold_solution <span style="font-weight: bold">= [</span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'solution'</span><span style="font-weight: bold">]), </span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'rev_solution'</span><span style="font-weight: bold">])]
+        </span>gold_expanded_states <span style="font-weight: bold">= [</span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'expanded_states'</span><span style="font-weight: bold">]), </span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'rev_expanded_states'</span><span style="font-weight: bold">])]
+
+        </span>solution<span style="font-weight: bold">, </span>expanded_states<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\t%s' </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        if </span>solution <span style="color: blue; font-weight: bold">in </span>gold_solution <span style="color: blue; font-weight: bold">and </span><span style="font-weight: bold">(</span><span style="color: blue; font-weight: bold">not </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>exactExpansionOrder <span style="color: blue; font-weight: bold">or </span>expanded_states <span style="color: blue; font-weight: bold">in </span>gold_expanded_states<span style="font-weight: bold">):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tsolution:\t\t%s' </span><span style="font-weight: bold">% </span>solution<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\texpanded_states:\t%s' </span><span style="font-weight: bold">% </span>expanded_states<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return True
+        else</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tgraph:'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">for </span>line <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>diagram<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">):
+                </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\t    %s' </span><span style="font-weight: bold">% (</span>line<span style="font-weight: bold">,))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent solution:\t\t%s' </span><span style="font-weight: bold">% </span>solution<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent expanded_states:\t%s' </span><span style="font-weight: bold">% </span>expanded_states<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">''</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect solution:\t\t%s' </span><span style="font-weight: bold">% </span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">])
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect expanded_states:\t%s' </span><span style="font-weight: bold">% </span>gold_expanded_states<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">])
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect rev_solution:\t\t%s' </span><span style="font-weight: bold">% </span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">1</span><span style="font-weight: bold">])
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect rev_expanded_states:\t%s' </span><span style="font-weight: bold">% </span>gold_expanded_states<span style="font-weight: bold">[</span><span style="color: red">1</span><span style="font-weight: bold">])
+            </span><span style="color: blue; font-weight: bold">return False
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># open file and write comments
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This solution is designed to support both right-to-left\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# and left-to-right implementations.\n'</span><span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># write forward solution
+        </span>solution<span style="font-weight: bold">, </span>expanded_states<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Error in solution code: %s" </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'solution: "%s"\n' </span><span style="font-weight: bold">% </span><span style="color: red">' '</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'expanded_states: "%s"\n' </span><span style="font-weight: bold">% </span><span style="color: red">' '</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>expanded_states<span style="font-weight: bold">))
+
+        </span><span style="color: green; font-style: italic"># reverse and write backwards solution
+        </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">not </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH
+        solution<span style="font-weight: bold">, </span>expanded_states<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Error in solution code: %s" </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'rev_solution: "%s"\n' </span><span style="font-weight: bold">% </span><span style="color: red">' '</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'rev_expanded_states: "%s"\n' </span><span style="font-weight: bold">% </span><span style="color: red">' '</span><span style="font-weight: bold">.</span>join<span style="font-weight: bold">(</span>expanded_states<span style="font-weight: bold">))
+
+        </span><span style="color: green; font-style: italic"># clean up
+        </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">not </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH
+        handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+
+class </span>PacmanSearchTest<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>PacmanSearchTest<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'algorithm'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layoutName'</span><span style="font-weight: bold">]
+
+        </span><span style="color: green; font-style: italic"># TODO: sensible to have defaults like this?
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>leewayFactor <span style="font-weight: bold">= </span>float<span style="font-weight: bold">(</span>testDict<span style="font-weight: bold">.</span>get<span style="font-weight: bold">(</span><span style="color: red">'leewayFactor'</span><span style="font-weight: bold">, </span><span style="color: red">'1'</span><span style="font-weight: bold">))
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>costFn <span style="font-weight: bold">= </span>eval<span style="font-weight: bold">(</span>testDict<span style="font-weight: bold">.</span>get<span style="font-weight: bold">(</span><span style="color: red">'costFn'</span><span style="font-weight: bold">, </span><span style="color: red">'None'</span><span style="font-weight: bold">))
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">.</span>get<span style="font-weight: bold">(</span><span style="color: red">'searchProblemClass'</span><span style="font-weight: bold">, </span><span style="color: red">'PositionSearchProblem'</span><span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">.</span>get<span style="font-weight: bold">(</span><span style="color: red">'heuristic'</span><span style="font-weight: bold">, </span><span style="color: blue">None</span><span style="font-weight: bold">)
+
+
+    </span><span style="color: blue; font-weight: bold">def </span>getSolInfo<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">):
+        </span>alg <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg<span style="font-weight: bold">)
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>start_state <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>start_state<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+
+        </span>problemClass <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName<span style="font-weight: bold">)
+        </span>problemOptions <span style="font-weight: bold">= {}
+        </span><span style="color: blue; font-weight: bold">if </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>costFn <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span>problemOptions<span style="font-weight: bold">[</span><span style="color: red">'costFn'</span><span style="font-weight: bold">] = </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>costFn
+        problem <span style="font-weight: bold">= </span>problemClass<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">, **</span>problemOptions<span style="font-weight: bold">)
+        </span>heuristic <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName<span style="font-weight: bold">) </span><span style="color: blue; font-weight: bold">if </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName <span style="font-weight: bold">!= </span><span style="color: blue">None </span><span style="color: blue; font-weight: bold">else </span><span style="color: blue">None
+
+        </span><span style="color: blue; font-weight: bold">if </span>heuristic <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span>solution <span style="font-weight: bold">= </span>alg<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>heuristic<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span>solution <span style="font-weight: bold">= </span>alg<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>type<span style="font-weight: bold">([]):
+            </span><span style="color: blue; font-weight: bold">return </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: red">'The result of %s must be a list. (Instead, it is %s)' </span><span style="font-weight: bold">% (</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg<span style="font-weight: bold">, </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+
+        </span><span style="color: blue; font-weight: bold">from </span>game <span style="color: blue; font-weight: bold">import </span>Directions
+        dirs <span style="font-weight: bold">= </span>Directions<span style="font-weight: bold">.</span>LEFT<span style="font-weight: bold">.</span>keys<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">if </span><span style="font-weight: bold">[</span>el <span style="color: blue; font-weight: bold">in </span>dirs <span style="color: blue; font-weight: bold">for </span>el <span style="color: blue; font-weight: bold">in </span>solution<span style="font-weight: bold">].</span>count<span style="font-weight: bold">(</span><span style="color: blue; font-weight: bold">False</span><span style="font-weight: bold">) != </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">return </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: blue">None</span><span style="font-weight: bold">, </span><span style="color: red">'Output of %s must be a list of actions from game.Directions' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>alg
+
+        expanded <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>_expanded
+        <span style="color: blue; font-weight: bold">return </span>solution<span style="font-weight: bold">, </span>expanded<span style="font-weight: bold">, </span><span style="color: blue">None
+
+    </span><span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>gold_solution <span style="font-weight: bold">= [</span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'solution'</span><span style="font-weight: bold">]), </span>str<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'rev_solution'</span><span style="font-weight: bold">])]
+        </span>gold_expanded <span style="font-weight: bold">= </span>max<span style="font-weight: bold">(</span>int<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'expanded_nodes'</span><span style="font-weight: bold">]), </span>int<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'rev_expanded_nodes'</span><span style="font-weight: bold">]))
+
+        </span>solution<span style="font-weight: bold">, </span>expanded<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'%s' </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        </span><span style="color: green; font-style: italic"># FIXME: do we want to standardize test output format?
+
+        </span><span style="color: blue; font-weight: bold">if </span>solution <span style="color: blue; font-weight: bold">not in </span>gold_solution<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'Solution not correct.'</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent solution length: %s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent solution:\n%s' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">''</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect solution length: %s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">]))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect (reversed) solution length: %s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">1</span><span style="font-weight: bold">]))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect solution:\n%s' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">]))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect (reversed) solution:\n%s' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>gold_solution<span style="font-weight: bold">[</span><span style="color: red">1</span><span style="font-weight: bold">]))
+            </span><span style="color: blue; font-weight: bold">return False
+
+        if </span>expanded <span style="font-weight: bold">&gt; </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>leewayFactor <span style="font-weight: bold">* </span>gold_expanded <span style="color: blue; font-weight: bold">and </span>expanded <span style="font-weight: bold">&gt; </span>gold_expanded <span style="font-weight: bold">+ </span><span style="color: red">1</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'Too many node expanded; are you expanding nodes twice?'</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent nodes expanded: %s' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">''</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect nodes expanded: %s (leewayFactor %s)' </span><span style="font-weight: bold">% (</span>gold_expanded<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>leewayFactor<span style="font-weight: bold">))
+            </span><span style="color: blue; font-weight: bold">return False
+
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tpacman layout:\t\t%s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tsolution length: %s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tnodes expanded:\t\t%s' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># open file and write comments
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This solution is designed to support both right-to-left\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# and left-to-right implementations.\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# Number of nodes expanded must be with a factor of %s of the numbers below.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>leewayFactor<span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># write forward solution
+        </span>solution<span style="font-weight: bold">, </span>expanded<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Error in solution code: %s" </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'solution: """\n%s\n"""\n' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'expanded_nodes: "%s"\n' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># write backward solution
+        </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">not </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH
+        solution<span style="font-weight: bold">, </span>expanded<span style="font-weight: bold">, </span>error <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>getSolInfo<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>error <span style="font-weight: bold">!= </span><span style="color: blue">None</span><span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">raise </span>Exception<span style="font-weight: bold">(</span><span style="color: red">"Error in solution code: %s" </span><span style="font-weight: bold">% </span>error<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'rev_solution: """\n%s\n"""\n' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'rev_expanded_nodes: "%s"\n' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># clean up
+        </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH <span style="font-weight: bold">= </span><span style="color: blue; font-weight: bold">not </span>search<span style="font-weight: bold">.</span>REVERSE_PUSH
+        handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+from </span>game <span style="color: blue; font-weight: bold">import </span>Actions
+<span style="color: blue; font-weight: bold">def </span>getStatesFromPath<span style="font-weight: bold">(</span>start<span style="font-weight: bold">, </span>path<span style="font-weight: bold">):
+    </span><span style="color: red">"Returns the list of states visited along the path"
+    </span>vis <span style="font-weight: bold">= [</span>start<span style="font-weight: bold">]
+    </span>curr <span style="font-weight: bold">= </span>start
+    <span style="color: blue; font-weight: bold">for </span>a <span style="color: blue; font-weight: bold">in </span>path<span style="font-weight: bold">:
+        </span>x<span style="font-weight: bold">,</span>y <span style="font-weight: bold">= </span>curr
+        dx<span style="font-weight: bold">, </span>dy <span style="font-weight: bold">= </span>Actions<span style="font-weight: bold">.</span>directionToVector<span style="font-weight: bold">(</span>a<span style="font-weight: bold">)
+        </span>curr <span style="font-weight: bold">= (</span>int<span style="font-weight: bold">(</span>x <span style="font-weight: bold">+ </span>dx<span style="font-weight: bold">), </span>int<span style="font-weight: bold">(</span>y <span style="font-weight: bold">+ </span>dy<span style="font-weight: bold">))
+        </span>vis<span style="font-weight: bold">.</span>append<span style="font-weight: bold">(</span>curr<span style="font-weight: bold">)
+    </span><span style="color: blue; font-weight: bold">return </span>vis
+
+<span style="color: blue; font-weight: bold">class </span>CornerProblemTest<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>CornerProblemTest<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layoutName'</span><span style="font-weight: bold">]
+
+    </span><span style="color: blue; font-weight: bold">def </span>solution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">):
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>gameState <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>gameState<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>CornersProblem<span style="font-weight: bold">(</span>gameState<span style="font-weight: bold">)
+        </span>path <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>bfs<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">)
+
+        </span>gameState <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>gameState<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>visited <span style="font-weight: bold">= </span>getStatesFromPath<span style="font-weight: bold">(</span>gameState<span style="font-weight: bold">.</span>getPacmanPosition<span style="font-weight: bold">(), </span>path<span style="font-weight: bold">)
+        </span>top<span style="font-weight: bold">, </span>right <span style="font-weight: bold">= </span>gameState<span style="font-weight: bold">.</span>getWalls<span style="font-weight: bold">().</span>height<span style="font-weight: bold">-</span><span style="color: red">2</span><span style="font-weight: bold">, </span>gameState<span style="font-weight: bold">.</span>getWalls<span style="font-weight: bold">().</span>width<span style="font-weight: bold">-</span><span style="color: red">2
+        </span>missedCorners <span style="font-weight: bold">= [</span>p <span style="color: blue; font-weight: bold">for </span>p <span style="color: blue; font-weight: bold">in </span><span style="font-weight: bold">((</span><span style="color: red">1</span><span style="font-weight: bold">,</span><span style="color: red">1</span><span style="font-weight: bold">), (</span><span style="color: red">1</span><span style="font-weight: bold">,</span>top<span style="font-weight: bold">), (</span>right<span style="font-weight: bold">, </span><span style="color: red">1</span><span style="font-weight: bold">), (</span>right<span style="font-weight: bold">, </span>top<span style="font-weight: bold">)) </span><span style="color: blue; font-weight: bold">if </span>p <span style="color: blue; font-weight: bold">not in </span>visited<span style="font-weight: bold">]
+
+        </span><span style="color: blue; font-weight: bold">return </span>path<span style="font-weight: bold">, </span>missedCorners
+
+    <span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>gold_length <span style="font-weight: bold">= </span>int<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'solution_length'</span><span style="font-weight: bold">])
+        </span>solution<span style="font-weight: bold">, </span>missedCorners <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>solution<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>type<span style="font-weight: bold">([]):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'The result must be a list. (Instead, it is %s)' </span><span style="font-weight: bold">% </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span><span style="color: blue; font-weight: bold">return False
+
+        if </span>len<span style="font-weight: bold">(</span>missedCorners<span style="font-weight: bold">) != </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'Corners missed: %s' </span><span style="font-weight: bold">% </span>missedCorners<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        if </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>gold_length<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'Optimal solution not found.'</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent solution length:\n%s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">''</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect solution length:\n%s' </span><span style="font-weight: bold">% </span>gold_length<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tpacman layout:\t\t%s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tsolution length:\t\t%s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span><span style="color: blue; font-weight: bold">return True
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># open file and write comments
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Solving problem"</span><span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName
+        <span style="color: blue; font-weight: bold">print </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText
+
+        path<span style="font-weight: bold">, </span>_ <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>solution<span style="font-weight: bold">(</span>search<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">)
+        </span>length <span style="font-weight: bold">= </span>len<span style="font-weight: bold">(</span>path<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Problem solved"
+
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'solution_length: "%s"\n' </span><span style="font-weight: bold">% </span>length<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+
+
+
+
+</span><span style="color: green; font-style: italic"># template = """class: "HeuristicTest"
+#
+# heuristic: "foodHeuristic"
+# searchProblemClass: "FoodSearchProblem"
+# layoutName: "Test %s"
+# layout: \"\"\"
+# %s
+# \"\"\"
+# """
+#
+# for i, (_, _, l) in enumerate(doneTests + foodTests):
+#     f = open("food_heuristic_%s.test" % (i+1), "w")
+#     f.write(template % (i+1, "\n".join(l)))
+#     f.close()
+
+</span><span style="color: blue; font-weight: bold">class </span>HeuristicTest<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>HeuristicTest<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layoutName'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'searchProblemClass'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'heuristic'</span><span style="font-weight: bold">]
+
+    </span><span style="color: blue; font-weight: bold">def </span>setupProblem<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">):
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>gameState <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>gameState<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problemClass <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName<span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>problemClass<span style="font-weight: bold">(</span>gameState<span style="font-weight: bold">)
+        </span>state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+        </span>heuristic <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">return </span>problem<span style="font-weight: bold">, </span>state<span style="font-weight: bold">, </span>heuristic
+
+    <span style="color: blue; font-weight: bold">def </span>checkHeuristic<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>heuristic<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">, </span>state<span style="font-weight: bold">, </span>solutionCost<span style="font-weight: bold">):
+        </span>h0 <span style="font-weight: bold">= </span>heuristic<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if </span>solutionCost <span style="font-weight: bold">== </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">== </span><span style="color: red">0</span><span style="font-weight: bold">:
+                </span><span style="color: blue; font-weight: bold">return True</span><span style="font-weight: bold">, </span><span style="color: red">''
+            </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+                </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed H(goal) == 0 test'
+
+        </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">&lt; </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed H &gt;= 0 test'
+        </span><span style="color: blue; font-weight: bold">if not </span>h0 <span style="font-weight: bold">&gt; </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed non-triviality test'
+        </span><span style="color: blue; font-weight: bold">if not </span>h0 <span style="font-weight: bold">&lt;= </span>solutionCost<span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed admissibility test'
+
+        </span><span style="color: blue; font-weight: bold">for </span>succ<span style="font-weight: bold">, </span>action<span style="font-weight: bold">, </span>stepCost <span style="color: blue; font-weight: bold">in </span>problem<span style="font-weight: bold">.</span>getSuccessors<span style="font-weight: bold">(</span>state<span style="font-weight: bold">):
+            </span>h1 <span style="font-weight: bold">= </span>heuristic<span style="font-weight: bold">(</span>succ<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">if </span>h1 <span style="font-weight: bold">&lt; </span><span style="color: red">0</span><span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed H &gt;= 0 test'
+            </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">- </span>h1 <span style="font-weight: bold">&gt; </span>stepCost<span style="font-weight: bold">: </span><span style="color: blue; font-weight: bold">return False</span><span style="font-weight: bold">, </span><span style="color: red">'Heuristic failed consistency test'
+
+        </span><span style="color: blue; font-weight: bold">return True</span><span style="font-weight: bold">, </span><span style="color: red">''
+
+    </span><span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>solutionCost <span style="font-weight: bold">= </span>int<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'solution_cost'</span><span style="font-weight: bold">])
+        </span>problem<span style="font-weight: bold">, </span>state<span style="font-weight: bold">, </span>heuristic <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>setupProblem<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">)
+
+        </span>passed<span style="font-weight: bold">, </span>message <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>checkHeuristic<span style="font-weight: bold">(</span>heuristic<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">, </span>state<span style="font-weight: bold">, </span>solutionCost<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if not </span>passed<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'%s' </span><span style="font-weight: bold">% </span>message<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        else</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return True
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># open file and write comments
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Solving problem"</span><span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName
+        <span style="color: blue; font-weight: bold">print </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText
+        problem<span style="font-weight: bold">, </span>_<span style="font-weight: bold">, </span>heuristic <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>setupProblem<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">)
+        </span>path <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>astar<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>heuristic<span style="font-weight: bold">)
+        </span>cost <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getCostOfActions<span style="font-weight: bold">(</span>path<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Problem solved"
+
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'solution_cost: "%s"\n' </span><span style="font-weight: bold">% </span>cost<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+
+
+
+
+class </span>HeuristicGrade<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>HeuristicGrade<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layoutName'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'searchProblemClass'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'heuristic'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>basePoints <span style="font-weight: bold">= </span>int<span style="font-weight: bold">(</span>testDict<span style="font-weight: bold">[</span><span style="color: red">'basePoints'</span><span style="font-weight: bold">])
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>thresholds <span style="font-weight: bold">= [</span>int<span style="font-weight: bold">(</span>t<span style="font-weight: bold">) </span><span style="color: blue; font-weight: bold">for </span>t <span style="color: blue; font-weight: bold">in </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'gradingThresholds'</span><span style="font-weight: bold">].</span>split<span style="font-weight: bold">()]
+
+    </span><span style="color: blue; font-weight: bold">def </span>setupProblem<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">):
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>gameState <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>gameState<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problemClass <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>searchProblemClassName<span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>problemClass<span style="font-weight: bold">(</span>gameState<span style="font-weight: bold">)
+        </span>state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+        </span>heuristic <span style="font-weight: bold">= </span>getattr<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>heuristicName<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">return </span>problem<span style="font-weight: bold">, </span>state<span style="font-weight: bold">, </span>heuristic
+
+
+    <span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>problem<span style="font-weight: bold">, </span>_<span style="font-weight: bold">, </span>heuristic <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>setupProblem<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">)
+
+        </span>path <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>astar<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>heuristic<span style="font-weight: bold">)
+
+        </span>expanded <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>_expanded
+
+        <span style="color: blue; font-weight: bold">if not </span>checkSolution<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>path<span style="font-weight: bold">):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tReturned path is not a solution.'</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tpath returned by astar: %s' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        </span>grades<span style="font-weight: bold">.</span>addPoints<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>basePoints<span style="font-weight: bold">)
+        </span>points <span style="font-weight: bold">= </span><span style="color: red">0
+        </span><span style="color: blue; font-weight: bold">for </span>threshold <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>thresholds<span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">if </span>expanded <span style="font-weight: bold">&lt;= </span>threshold<span style="font-weight: bold">:
+                </span>points <span style="font-weight: bold">+= </span><span style="color: red">1
+        </span>grades<span style="font-weight: bold">.</span>addPoints<span style="font-weight: bold">(</span>points<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>points <span style="font-weight: bold">&gt;= </span>len<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>thresholds<span style="font-weight: bold">):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\texpanded nodes: %s' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tthresholds: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>thresholds<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# File intentionally blank.\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+
+
+
+</span><span style="color: green; font-style: italic"># template = """class: "ClosestDotTest"
+#
+# layoutName: "Test %s"
+# layout: \"\"\"
+# %s
+# \"\"\"
+# """
+#
+# for i, (_, _, l) in enumerate(foodTests):
+#     f = open("closest_dot_%s.test" % (i+1), "w")
+#     f.write(template % (i+1, "\n".join(l)))
+#     f.close()
+
+</span><span style="color: blue; font-weight: bold">class </span>ClosestDotTest<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>ClosestDotTest<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layoutName'</span><span style="font-weight: bold">]
+
+    </span><span style="color: blue; font-weight: bold">def </span>solution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">):
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>gameState <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>gameState<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>path <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>ClosestDotSearchAgent<span style="font-weight: bold">().</span>findPathToClosestDot<span style="font-weight: bold">(</span>gameState<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return </span>path
+
+    <span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>gold_length <span style="font-weight: bold">= </span>int<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'solution_length'</span><span style="font-weight: bold">])
+        </span>solution <span style="font-weight: bold">= </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>solution<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">if </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>type<span style="font-weight: bold">([]):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tThe result must be a list. (Instead, it is %s)' </span><span style="font-weight: bold">% </span>type<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span><span style="color: blue; font-weight: bold">return False
+
+        if </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">) != </span>gold_length<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'Closest dot not found.'</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tstudent solution length:\n%s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">''</span><span style="font-weight: bold">)
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tcorrect solution length:\n%s' </span><span style="font-weight: bold">% </span>gold_length<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: %s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tpacman layout:\t\t%s' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName<span style="font-weight: bold">)
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'\tsolution length:\t\t%s' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span><span style="color: blue; font-weight: bold">return True
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># open file and write comments
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This is the solution file for %s.\n' </span><span style="font-weight: bold">% </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>path<span style="font-weight: bold">)
+
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Solving problem"</span><span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutName
+        <span style="color: blue; font-weight: bold">print </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layoutText
+
+        length <span style="font-weight: bold">= </span>len<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">.</span>solution<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">))
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"Problem solved"
+
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'solution_length: "%s"\n' </span><span style="font-weight: bold">% </span>length<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+
+
+class </span>CornerHeuristicSanity<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>CornerHeuristicSanity<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+
+    </span><span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>game_state <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>game_state<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>CornersProblem<span style="font-weight: bold">(</span>game_state<span style="font-weight: bold">)
+        </span>start_state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+        </span>h0 <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+        </span>succs <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getSuccessors<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">)
+        </span><span style="color: green; font-style: italic"># cornerConsistencyA
+        </span><span style="color: blue; font-weight: bold">for </span>succ <span style="color: blue; font-weight: bold">in </span>succs<span style="font-weight: bold">:
+            </span>h1 <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">(</span>succ<span style="font-weight: bold">[</span><span style="color: red">0</span><span style="font-weight: bold">], </span>problem<span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">- </span>h1 <span style="font-weight: bold">&gt; </span><span style="color: red">1</span><span style="font-weight: bold">:
+                </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: inconsistent heuristic'</span><span style="font-weight: bold">)
+                </span><span style="color: blue; font-weight: bold">return False
+        </span>heuristic_cost <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+        </span>true_cost <span style="font-weight: bold">= </span>float<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'cost'</span><span style="font-weight: bold">])
+        </span><span style="color: green; font-style: italic"># cornerNontrivial
+        </span><span style="color: blue; font-weight: bold">if </span>heuristic_cost <span style="font-weight: bold">== </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: must use non-trivial heuristic'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        </span><span style="color: green; font-style: italic"># cornerAdmissible
+        </span><span style="color: blue; font-weight: bold">if </span>heuristic_cost <span style="font-weight: bold">&gt; </span>true_cost<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: Inadmissible heuristic'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        </span>path <span style="font-weight: bold">= </span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'path'</span><span style="font-weight: bold">].</span>split<span style="font-weight: bold">()
+        </span>states <span style="font-weight: bold">= </span>followPath<span style="font-weight: bold">(</span>path<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">)
+        </span>heuristics <span style="font-weight: bold">= []
+        </span><span style="color: blue; font-weight: bold">for </span>state <span style="color: blue; font-weight: bold">in </span>states<span style="font-weight: bold">:
+            </span>heuristics<span style="font-weight: bold">.</span>append<span style="font-weight: bold">(</span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">(</span>state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">))
+        </span><span style="color: blue; font-weight: bold">for </span>i <span style="color: blue; font-weight: bold">in </span>range<span style="font-weight: bold">(</span><span style="color: red">0</span><span style="font-weight: bold">, </span>len<span style="font-weight: bold">(</span>heuristics<span style="font-weight: bold">) - </span><span style="color: red">1</span><span style="font-weight: bold">):
+            </span>h0 <span style="font-weight: bold">= </span>heuristics<span style="font-weight: bold">[</span>i<span style="font-weight: bold">]
+            </span>h1 <span style="font-weight: bold">= </span>heuristics<span style="font-weight: bold">[</span>i<span style="font-weight: bold">+</span><span style="color: red">1</span><span style="font-weight: bold">]
+            </span><span style="color: green; font-style: italic"># cornerConsistencyB
+            </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">- </span>h1 <span style="font-weight: bold">&gt; </span><span style="color: red">1</span><span style="font-weight: bold">:
+                </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: inconsistent heuristic'</span><span style="font-weight: bold">)
+                </span><span style="color: blue; font-weight: bold">return False
+            </span><span style="color: green; font-style: italic"># cornerPosH
+            </span><span style="color: blue; font-weight: bold">if </span>h0 <span style="font-weight: bold">&lt; </span><span style="color: red">0 </span><span style="color: blue; font-weight: bold">or </span>h1 <span style="font-weight: bold">&lt;</span><span style="color: red">0</span><span style="font-weight: bold">:
+                </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: non-positive heuristic'</span><span style="font-weight: bold">)
+                </span><span style="color: blue; font-weight: bold">return False
+        </span><span style="color: green; font-style: italic"># cornerGoalH
+        </span><span style="color: blue; font-weight: bold">if </span>heuristics<span style="font-weight: bold">[</span>len<span style="font-weight: bold">(</span>heuristics<span style="font-weight: bold">) - </span><span style="color: red">1</span><span style="font-weight: bold">] != </span><span style="color: red">0</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: heuristic non-zero at goal'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: heuristic value less than true cost at start state'</span><span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return True
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># write comment
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# In order for a heuristic to be admissible, the value\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# of the heuristic must be less at each state than the\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# true cost of the optimal path from that state to a goal.\n'</span><span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># solve problem and write solution
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>start_state <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>start_state<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>CornersProblem<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">)
+        </span>solution <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>astar<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'cost: "%d"\n' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'path: """\n%s\n"""\n' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+
+
+class </span>CornerHeuristicPacman<span style="font-weight: bold">(</span>testClasses<span style="font-weight: bold">.</span>TestCase<span style="font-weight: bold">):
+
+    </span><span style="color: blue; font-weight: bold">def </span>__init__<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">):
+        </span>super<span style="font-weight: bold">(</span>CornerHeuristicPacman<span style="font-weight: bold">, </span><span style="color: blue">self</span><span style="font-weight: bold">).</span>__init__<span style="font-weight: bold">(</span>question<span style="font-weight: bold">, </span>testDict<span style="font-weight: bold">)
+        </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text <span style="font-weight: bold">= </span>testDict<span style="font-weight: bold">[</span><span style="color: red">'layout'</span><span style="font-weight: bold">]
+
+    </span><span style="color: blue; font-weight: bold">def </span>execute<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>grades<span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span>total <span style="font-weight: bold">= </span><span style="color: red">0
+        </span>true_cost <span style="font-weight: bold">= </span>float<span style="font-weight: bold">(</span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'cost'</span><span style="font-weight: bold">])
+        </span>thresholds <span style="font-weight: bold">= </span>map<span style="font-weight: bold">(</span>int<span style="font-weight: bold">, </span>solutionDict<span style="font-weight: bold">[</span><span style="color: red">'thresholds'</span><span style="font-weight: bold">].</span>split<span style="font-weight: bold">())
+        </span>game_state <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>game_state<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>CornersProblem<span style="font-weight: bold">(</span>game_state<span style="font-weight: bold">)
+        </span>start_state <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getStartState<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">if </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">, </span>problem<span style="font-weight: bold">) &gt; </span>true_cost<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: Inadmissible heuristic'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        </span>path <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>astar<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">print </span><span style="color: red">"path:"</span><span style="font-weight: bold">, </span>path
+        <span style="color: blue; font-weight: bold">print </span><span style="color: red">"path length:"</span><span style="font-weight: bold">, </span>len<span style="font-weight: bold">(</span>path<span style="font-weight: bold">)
+        </span>cost <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>getCostOfActions<span style="font-weight: bold">(</span>path<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>cost <span style="font-weight: bold">&gt; </span>true_cost<span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: Inconsistent heuristic'</span><span style="font-weight: bold">)
+            </span><span style="color: blue; font-weight: bold">return False
+        </span>expanded <span style="font-weight: bold">= </span>problem<span style="font-weight: bold">.</span>_expanded
+        points <span style="font-weight: bold">= </span><span style="color: red">0
+        </span><span style="color: blue; font-weight: bold">for </span>threshold <span style="color: blue; font-weight: bold">in </span>thresholds<span style="font-weight: bold">:
+            </span><span style="color: blue; font-weight: bold">if </span>expanded <span style="font-weight: bold">&lt;= </span>threshold<span style="font-weight: bold">:
+                </span>points <span style="font-weight: bold">+= </span><span style="color: red">1
+        </span>grades<span style="font-weight: bold">.</span>addPoints<span style="font-weight: bold">(</span>points<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">if </span>points <span style="font-weight: bold">&gt;= </span>len<span style="font-weight: bold">(</span>thresholds<span style="font-weight: bold">):
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'PASS: Heuristic resulted in expansion of %d nodes' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">else</span><span style="font-weight: bold">:
+            </span>grades<span style="font-weight: bold">.</span>addMessage<span style="font-weight: bold">(</span><span style="color: red">'FAIL: Heuristic resulted in expansion of %d nodes' </span><span style="font-weight: bold">% </span>expanded<span style="font-weight: bold">)
+        </span><span style="color: blue; font-weight: bold">return True
+
+    def </span>writeSolution<span style="font-weight: bold">(</span><span style="color: blue">self</span><span style="font-weight: bold">, </span>moduleDict<span style="font-weight: bold">, </span>filePath<span style="font-weight: bold">):
+        </span>search <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'search'</span><span style="font-weight: bold">]
+        </span>searchAgents <span style="font-weight: bold">= </span>moduleDict<span style="font-weight: bold">[</span><span style="color: red">'searchAgents'</span><span style="font-weight: bold">]
+        </span><span style="color: green; font-style: italic"># write comment
+        </span>handle <span style="font-weight: bold">= </span>open<span style="font-weight: bold">(</span>filePath<span style="font-weight: bold">, </span><span style="color: red">'w'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# This solution file specifies the length of the optimal path\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# as well as the thresholds on number of nodes expanded to be\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'# used in scoring.\n'</span><span style="font-weight: bold">)
+
+        </span><span style="color: green; font-style: italic"># solve problem and write solution
+        </span>lay <span style="font-weight: bold">= </span>layout<span style="font-weight: bold">.</span>Layout<span style="font-weight: bold">([</span>l<span style="font-weight: bold">.</span>strip<span style="font-weight: bold">() </span><span style="color: blue; font-weight: bold">for </span>l <span style="color: blue; font-weight: bold">in </span><span style="color: blue">self</span><span style="font-weight: bold">.</span>layout_text<span style="font-weight: bold">.</span>split<span style="font-weight: bold">(</span><span style="color: red">'\n'</span><span style="font-weight: bold">)])
+        </span>start_state <span style="font-weight: bold">= </span>pacman<span style="font-weight: bold">.</span>GameState<span style="font-weight: bold">()
+        </span>start_state<span style="font-weight: bold">.</span>initialize<span style="font-weight: bold">(</span>lay<span style="font-weight: bold">, </span><span style="color: red">0</span><span style="font-weight: bold">)
+        </span>problem <span style="font-weight: bold">= </span>searchAgents<span style="font-weight: bold">.</span>CornersProblem<span style="font-weight: bold">(</span>start_state<span style="font-weight: bold">)
+        </span>solution <span style="font-weight: bold">= </span>search<span style="font-weight: bold">.</span>astar<span style="font-weight: bold">(</span>problem<span style="font-weight: bold">, </span>searchAgents<span style="font-weight: bold">.</span>cornersHeuristic<span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'cost: "%d"\n' </span><span style="font-weight: bold">% </span>len<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'path: """\n%s\n"""\n' </span><span style="font-weight: bold">% </span>wrap_solution<span style="font-weight: bold">(</span>solution<span style="font-weight: bold">))
+        </span>handle<span style="font-weight: bold">.</span>write<span style="font-weight: bold">(</span><span style="color: red">'thresholds: "2000 1600 1200"\n'</span><span style="font-weight: bold">)
+        </span>handle<span style="font-weight: bold">.</span>close<span style="font-weight: bold">()
+        </span><span style="color: blue; font-weight: bold">return True
+
+</span>
+  </pre>
+  </body>
+  </html>
+  

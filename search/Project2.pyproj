@@ -1,0 +1,78 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{0f198e47-96df-46d2-bac6-df5383ac458a}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>autograder.py</StartupFile>
+    <SearchPath />
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</InterpreterId>
+    <InterpreterVersion>2.7</InterpreterVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="commands.txt" />
+    <Content Include="css\navigation.css" />
+    <Content Include="css\project.css" />
+    <Content Include="docs\autograder.html" />
+    <Content Include="docs\eightpuzzle.html" />
+    <Content Include="docs\game.html" />
+    <Content Include="docs\ghostAgents.html" />
+    <Content Include="docs\graphicsDisplay.html" />
+    <Content Include="docs\graphicsUtils.html" />
+    <Content Include="docs\keyboardAgents.html" />
+    <Content Include="docs\layout.html" />
+    <Content Include="docs\maze.png" />
+    <Content Include="docs\pacman.html" />
+    <Content Include="docs\pacmanAgents.html" />
+    <Content Include="docs\search.html" />
+    <Content Include="docs\searchAgents.html" />
+    <Content Include="docs\searchAgents.old.html" />
+    <Content Include="docs\searchTestClasses.html" />
+    <Content Include="docs\testClasses.html" />
+    <Content Include="docs\testParser.html" />
+    <Content Include="docs\textDisplay.html" />
+    <Content Include="docs\util.html" />
+    <Content Include="project1.html" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="autograder.py" />
+    <Compile Include="eightpuzzle.py" />
+    <Compile Include="game.py" />
+    <Compile Include="ghostAgents.py" />
+    <Compile Include="grading.py" />
+    <Compile Include="graphicsDisplay.py" />
+    <Compile Include="graphicsUtils.py" />
+    <Compile Include="keyboardAgents.py" />
+    <Compile Include="layout.py" />
+    <Compile Include="pacman.py" />
+    <Compile Include="pacmanAgents.py" />
+    <Compile Include="projectParams.py" />
+    <Compile Include="search.py" />
+    <Compile Include="searchAgents.py" />
+    <Compile Include="searchTestClasses.py" />
+    <Compile Include="testClasses.py" />
+    <Compile Include="testParser.py" />
+    <Compile Include="textDisplay.py" />
+    <Compile Include="util.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="css" />
+    <Folder Include="docs" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{9a7a9026-48c1-4688-9d5d-e5699d47d074}\2.7" />
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>
