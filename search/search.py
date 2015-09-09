@@ -87,9 +87,6 @@ def depthFirstSearch(problem):
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
     "*** YOUR CODE HERE ***"
-    print "Start:", problem.getStartState()
-    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
-    print "Start's successors:", problem.getSuccessors(problem.getStartState())
     actions = []
     visited = set()
     if problem.isGoalState(problem.getStartState()):
@@ -122,6 +119,9 @@ def _recursiveDFS(problem, actions, visited, sucessor):
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
+    #failed autograder when checked if state was goal state when generated, as opposed to expanded
+    #despite the book saying that is the correct process
+ 
     #check if start at goal state
     if problem.isGoalState(problem.getStartState()):
         return []
@@ -152,7 +152,7 @@ def breadthFirstSearch(problem):
                 cumCost+=cost
                 newChild=[nextState, newActions, cumCost]
                 if problem.isGoalState(nextState):
-                    return actions
+                    return newActions
                 else:
                     toVisit.push(newChild)
 
@@ -160,8 +160,37 @@ def breadthFirstSearch(problem):
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+   
+    visited=set()
+    #create priority q that gets priority from 3rd element in the item
+    toVisit=util.PriorityQueueWithFunction(lambda i: i[2])
+
+    toVisit.push([problem.getStartState(), [], 0])
+    while not toVisit.isEmpty():
+        #unpack the list
+        curState, actions, cumCost= toVisit.pop()
+        #if this state has already been visited (a path with lower cost was found) continue
+        if curState in visited:
+            continue
+        elif problem.isGoalState(curState): #found the cheapest goal
+            return actions
+        else: #this is the lowest cost path to curState, so add it to visited
+            visited.add(curState)
+
+        for child in problem.getSuccessors(curState):
+            #unpack the child tuple
+            nextState, nextAction, cost = child
+            if nextState in visited: 
+                continue
+            else:
+                #make a list to represent the child, so the middle element can be changed
+                #modify the elements as needed
+                newActions=list(actions)
+                newActions.append(nextAction)
+                newChild=[nextState, newActions, cumCost+cost]
+                toVisit.push(newChild)
+
+
 
 def nullHeuristic(state, problem=None):
     """
