@@ -1,2 +1,5 @@
 *.sln
 search/Project2.v12.suo
+*.pyproj
+*.pyc
+*.pyc

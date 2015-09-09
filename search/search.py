@@ -122,7 +122,41 @@ def _recursiveDFS(problem, actions, visited, sucessor):
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    #check if start at goal state
+    if problem.isGoalState(problem.getStartState()):
+        return []
+    #set of visited states
+    visited=set()
+    #add the start state
+    visited.add(problem.getStartState())
+    toVisit=util.Queue()
+    #push a dummy successor object, which represents the starting state
+    toVisit.push([problem.getStartState(), [], 0])
+    
+
+    while not toVisit.isEmpty():
+        #unpack the list
+        cur_state, actions, cumCost= toVisit.pop()
+        
+        for child in problem.getSuccessors(cur_state):
+            #unpack the child tuple
+            nextState, nextAction, cost = child
+            if nextState in visited:
+                continue
+            else:
+                visited.add(nextState)
+                #make a list to represent the child, so the middle element can be changed
+                #modify the elements as needed
+                newActions=list(actions)
+                newActions.append(nextAction)
+                cumCost+=cost
+                newChild=[nextState, newActions, cumCost]
+                if problem.isGoalState(nextState):
+                    return actions
+                else:
+                    toVisit.push(newChild)
+
+
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
