@@ -87,9 +87,6 @@ def depthFirstSearch(problem):
     print "Start's successors:", problem.getSuccessors(problem.getStartState())
     """
     "*** YOUR CODE HERE ***"
-    print "Start:", problem.getStartState()
-    print "Is the start a goal?", problem.isGoalState(problem.getStartState())
-    print "Start's successors:", problem.getSuccessors(problem.getStartState())
     actions = []
     visited = set()
     if problem.isGoalState(problem.getStartState()):
@@ -122,12 +119,78 @@ def _recursiveDFS(problem, actions, visited, sucessor):
 def breadthFirstSearch(problem):
     """Search the shallowest nodes in the search tree first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    #failed autograder when checked if state was goal state when generated, as opposed to expanded
+    #despite the book saying that is the correct process
+ 
+    #check if start at goal state
+    if problem.isGoalState(problem.getStartState()):
+        return []
+    #set of visited states
+    visited=set()
+    #add the start state
+    visited.add(problem.getStartState())
+    toVisit=util.Queue()
+    #push a dummy successor object, which represents the starting state
+    toVisit.push([problem.getStartState(), [], 0])
+    
+
+    while not toVisit.isEmpty():
+        #unpack the list
+        cur_state, actions, cumCost= toVisit.pop()
+        
+        for child in problem.getSuccessors(cur_state):
+            #unpack the child tuple
+            nextState, nextAction, cost = child
+            if nextState in visited:
+                continue
+            else:
+                visited.add(nextState)
+                #make a list to represent the child, so the middle element can be changed
+                #modify the elements as needed
+                newActions=list(actions)
+                newActions.append(nextAction)
+                cumCost+=cost
+                newChild=[nextState, newActions, cumCost]
+                if problem.isGoalState(nextState):
+                    return newActions
+                else:
+                    toVisit.push(newChild)
+
+
 
 def uniformCostSearch(problem):
     """Search the node of least total cost first."""
-    "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+   
+    visited=set()
+    #create priority q that gets priority from 3rd element in the item
+    toVisit=util.PriorityQueueWithFunction(lambda i: i[2])
+
+    toVisit.push([problem.getStartState(), [], 0])
+    while not toVisit.isEmpty():
+        #unpack the list
+        curState, actions, cumCost= toVisit.pop()
+        #if this state has already been visited (a path with lower cost was found) continue
+        if curState in visited:
+            continue
+        elif problem.isGoalState(curState): #found the cheapest goal
+            return actions
+        else: #this is the lowest cost path to curState, so add it to visited
+            visited.add(curState)
+
+        for child in problem.getSuccessors(curState):
+            #unpack the child tuple
+            nextState, nextAction, cost = child
+            if nextState in visited: 
+                continue
+            else:
+                #make a list to represent the child, so the middle element can be changed
+                #modify the elements as needed
+                newActions=list(actions)
+                newActions.append(nextAction)
+                newChild=[nextState, newActions, cumCost+cost]
+                toVisit.push(newChild)
+
+
 
 def nullHeuristic(state, problem=None):
     """
@@ -139,7 +202,30 @@ def nullHeuristic(state, problem=None):
 def aStarSearch(problem, heuristic=nullHeuristic):
     """Search the node that has the lowest combined cost and heuristic first."""
     "*** YOUR CODE HERE ***"
-    util.raiseNotDefined()
+    visited = set()
+    #create priority q that gets priority from 4th element in the item
+    toVisit = util.PriorityQueueWithFunction(lambda i: i[3])
+    #store the total path cost to reach a node as the third element and the total path cost plus the heuristic cost in the 4th element
+    toVisit.push([problem.getStartState(), [], 0, 0])
+    while not toVisit.isEmpty():
+        #unpack the list, can ignore the 4th element because it is only used to determine priority
+        cur_state, actions, pathCost, _ = toVisit.pop()
+
+        if cur_state not in visited:
+            #check goal state when node is visited
+            if problem.isGoalState(cur_state):
+                return actions
+            else:
+                visited.add(cur_state)
+            
+            for child in problem.getSuccessors(cur_state):
+                nextState, nextAction, cost = child
+                #check if child has been visited to avoid loops
+                if nextState not in visited:
+                    newActions = list(actions)
+                    newActions.append(nextAction)
+                    newChild = [nextState, newActions, pathCost + cost, pathCost + cost + heuristic(nextState, problem)]
+                    toVisit.push(newChild)
 
 
 # Abbreviations
