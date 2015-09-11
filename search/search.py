@@ -138,6 +138,9 @@ def breadthFirstSearch(problem):
         #unpack the list
         cur_state, actions, cumCost= toVisit.pop()
         
+        if problem.isGoalState(cur_state):
+            return actions
+        
         for child in problem.getSuccessors(cur_state):
             #unpack the child tuple
             nextState, nextAction, cost = child
@@ -151,10 +154,10 @@ def breadthFirstSearch(problem):
                 newActions.append(nextAction)
                 cumCost+=cost
                 newChild=[nextState, newActions, cumCost]
-                if problem.isGoalState(nextState):
-                    return newActions
-                else:
-                    toVisit.push(newChild)
+#                if problem.isGoalState(nextState):
+#                    return newActions
+#                else:
+                toVisit.push(newChild)
 
 
 

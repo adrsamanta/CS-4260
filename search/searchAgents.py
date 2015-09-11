@@ -333,9 +333,10 @@ class CornersProblem(search.SearchProblem):
             if not hitsWall:
                 #Create new set containing all corners visited by previous position to avoid modifying current state
                 cornersReached = set(state[1])
+                nextPos = (nextx,nexty)
                 
-                if currentPosition in self.corners:
-                    cornersReached.add(currentPosition)
+                if nextPos in self.corners:
+                    cornersReached.add(nextPos)
                 
                 nextState = ((nextx,nexty),frozenset(cornersReached))
                 successors.append((nextState,action,cost))
