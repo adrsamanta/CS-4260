@@ -287,7 +287,9 @@ class CornersProblem(search.SearchProblem):
         self._expanded = 0 # DO NOT CHANGE; Number of search nodes expanded
         # Please add any code here which you would like to use
         # in initializing the problem
+        #The state is (pacman_position, set of visited corners)
         "*** YOUR CODE HERE ***"
+        self.startState = (self.startingPosition, frozenset())
 
     def getStartState(self):
         """
@@ -295,14 +297,14 @@ class CornersProblem(search.SearchProblem):
         space)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.startState
 
     def isGoalState(self, state):
         """
         Returns whether this search state is a goal state of the problem.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return len(state[1]) == 4
 
     def getSuccessors(self, state):
         """
@@ -316,16 +318,28 @@ class CornersProblem(search.SearchProblem):
         """
 
         successors = []
+        #Constant for the cost of each action
+        cost = 1
         for action in [Directions.NORTH, Directions.SOUTH, Directions.EAST, Directions.WEST]:
+            currentPosition = state[0]
             # Add a successor state to the successor list if the action is legal
             # Here's a code snippet for figuring out whether a new position hits a wall:
-            #   x,y = currentPosition
-            #   dx, dy = Actions.directionToVector(action)
-            #   nextx, nexty = int(x + dx), int(y + dy)
-            #   hitsWall = self.walls[nextx][nexty]
+            x,y = currentPosition
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+            hitsWall = self.walls[nextx][nexty]
 
             "*** YOUR CODE HERE ***"
-
+            if not hitsWall:
+                #Create new set containing all corners visited by previous position to avoid modifying current state
+                cornersReached = set(state[1])
+                
+                if currentPosition in self.corners:
+                    cornersReached.add(currentPosition)
+                
+                nextState = ((nextx,nexty),frozenset(cornersReached))
+                successors.append((nextState,action,cost))
+    
         self._expanded += 1 # DO NOT CHANGE
         return successors
 
