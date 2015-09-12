@@ -468,8 +468,28 @@ def foodHeuristic(state, problem):
     problem.heuristicInfo['wallCount']
     """
     position, foodGrid = state
+    import copy
+    curGameState = copy.copy(problem)
+    curGameState.getPacmanPosition = lambda : position
+    curGameState.getFood = lambda : foodGrid
+    curGameState.getWalls = lambda : problem.walls
+    prob = AnyFoodSearchProblem(curGameState)
+    
+    closestFoodDistance = len(search.breadthFirstSearch(prob))
+    
+    #Since each "food" counts itself as a move, substract 1 from the closest food distance to
+    #keep the distance correct (if food is 5 steps away, 4 steps come from this number, the fifth 
+    #comes from the existence of that food)
+    stepsToFood=closestFoodDistance-1 
+    if closestFoodDistance ==0:
+        #this occurs if there is no food, or if the current position has food
+        #in this case, steps to food should also be 0
+        stepsToFood=0
+
     "*** YOUR CODE HERE ***"
-    return foodGrid.count()
+    return stepsToFood + foodGrid.count()
+
+
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
@@ -534,9 +554,9 @@ class AnyFoodSearchProblem(PositionSearchProblem):
         complete the problem definition.
         """
         x,y = state
-
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #Alan Implemented
+        return self.food[x][y]
+        
 
 def mazeDistance(point1, point2, gameState):
     """
