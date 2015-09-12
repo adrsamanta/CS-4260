@@ -139,6 +139,8 @@ def breadthFirstSearch(problem):
         cur_state, actions, cumCost= toVisit.pop()
         
         if problem.isGoalState(cur_state):
+            #if actions == None:
+            #    print("actions none")
             return actions
         
         for child in problem.getSuccessors(cur_state):
@@ -158,6 +160,7 @@ def breadthFirstSearch(problem):
 #                    return newActions
 #                else:
                 toVisit.push(newChild)
+    return []
 
 
 
