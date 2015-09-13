@@ -1,0 +1,117 @@
+
+
+problem is DFS returns once finds any child that isnt food, even if parent DOES have adjacent child with food
+
+___________________________________________________________
+
+
+closestFoodPos=position
+    for action in closestFoodPath:
+        #find the position of the closest food
+        closestFoodPos=Actions.getSuccessor(closestFoodPos, action)
+    print "endPos=", closestFoodPos
+    #search for a chain from the closest food to a position that has no food adjacent to it other
+    #than the piece that led to it (so if go from p1->p2->p3, where they all have food, p3 is a goal
+    #iff p2 is the only adjacent position with food)
+    class PathThroughFoodSearchProblem(PositionSearchProblem):
+        def __init__(self, gameState):
+            self.food = gameState.getFood()            
+            self.walls = gameState.getWalls()
+            self.startState = gameState.getPacmanPosition()
+            self.costFn = lambda x: 1
+            self._visited, self._visitedlist, self._expanded = {}, [], 0 # DO NOT CHANGE
+
+        def isGoalState(self, state):
+            x, y = state
+            #can't be a goal state if it doesn't have food
+            if not self.food[int(x)][int(y)]:
+                return False
+            #count amount of adjacent food. If only 1 piece adjacent, then this position is the 
+            #end of a food chain, and thus a goal state
+            adjacentFoodCount=0
+            print "checking neighbors of", state
+            for neighbor in Actions.getLegalNeighbors(state, self.walls):
+                if state==neighbor:
+                    continue
+                nx, ny = neighbor
+                if self.food[int(nx)][int(ny)]:
+                    print "food found at", neighbor
+                    adjacentFoodCount+=1
+            print "state=", state, "afc=", adjacentFoodCount
+            #if we're at the start state, and there is no adjacent food, start state is also a goal
+            #if start state only has 1 food adjacent to it however, follow it. 
+            if state==self.startState and adjacentFoodCount==0:
+                return True
+            return adjacentFoodCount==1
+
+
+    #foodGameState=copy.copy(curGameState)
+    #foodGameState.getPacmanPosition = lambda : endPos
+    curGameState.getPacmanPosition = lambda : closestFoodPos
+    
+    #endFoodPath = search.depthFirstSearch(foodGameState)
+    pathThruFoodProb = PathThroughFoodSearchProblem(curGameState)
+    endFoodPath = search.depthFirstSearch(pathThruFoodProb)
+    endFoodPos = closestFoodPos
+    
+    newFoodGrid = foodGrid.copy()
+    for action in endFoodPath:
+        #find the position of the closest food
+        cx, cy=endFoodPos
+        newFoodGrid[int(cx)][int(cy)]=False
+        endFoodPos=Actions.getSuccessor(endFoodPos, action)
+    print "endFoodPath=", endFoodPath
+    print "endFoodPos=", endFoodPos
+    cx, cy=endFoodPos
+    newFoodGrid[int(cx)][int(cy)]=False
+    curGameState.getPacmanPosition = lambda : endFoodPos    
+    curGameState.getFood = lambda : newFoodGrid
+
+    prob2 = AnyFoodSearchProblem(curGameState)
+    
+    nextFoodPath = search.bfs(prob2)
+    print "nextFoodPath=", nextFoodPath
+    nextFoodDistance = len(closestFoodPath)
+    #same logic as original stepsToFood variable
+    stepsToFood2 = nextFoodDistance-1 if nextFoodDistance!=0 else 0
+    print "stepsToFood=", stepsToFood, "foodgrid count=", foodGrid.count(), "stepsToFood2=", stepsToFood2
+    return stepsToFood + foodGrid.count() + stepsToFood2
+
+
+
+______________________________________________
+
+didn't make a difference
+
+
+____________
+
+    #track the number of pieces of food not adjacent to any other food
+    #each of those adds at least 1 extra move to the total number of moves needed
+    #because we must move to an empty spot
+    extraMoves=0
+    for pos in foodGrid.asList():
+        if pos == closestFoodPos:
+            #skip counting the closest position, as that has already been dealt with
+            continue
+        adjacentToFood=False
+        for neighbor in Actions.getLegalNeighbors(pos, problem.walls):
+            nx, ny = neighbor
+            if foodGrid[nx][ny]:
+                adjacentToFood=True
+                break
+        if not adjacentToFood:
+            extraMoves+=1
+
+_____________________
+
+
+
+
+
+
+
+
+
+
+

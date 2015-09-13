@@ -98,7 +98,7 @@ def depthFirstSearch(problem):
             result = _recursiveDFS(problem, actions, visited, sucessor)
             if result:
                 return result
-    return None
+    return []
 
 
 def _recursiveDFS(problem, actions, visited, sucessor):
@@ -113,7 +113,7 @@ def _recursiveDFS(problem, actions, visited, sucessor):
             if result:
                 return result
     actions.pop()
-    return None
+    return []
 
 
 def breadthFirstSearch(problem):
