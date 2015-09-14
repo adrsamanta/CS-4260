@@ -472,14 +472,26 @@ def foodHeuristic(state, problem):
     #finds the manhatten distance between 2 positions
     def manDist(pos1, pos2):
         return abs(pos1[0]-pos2[0])+abs(pos1[1]-pos2[1])
+    
+    #constant key into problem.heuristicInfo
     DIST_DIC_KEY = "DIST_DIC"
+    
     position, foodGrid = state
+
     foodList = foodGrid.asList()
+    
     if len(foodList)==0:
+        #if foodList is 0, problem is solved
+        #check here to save computation time, and also to avoid messy corner cases down the line
         return 0
 
-    import copy
-    curGameState = copy.copy(problem)
+    #create a generic object with no attributes for use as a dummy game state object
+    class Object:
+        pass
+    
+    #Assemble an object that has the methods expected by the mazeDistance method
+    #since food and position depend on the state, but the walls depends on the problem, a new object was needed to hold this data
+    curGameState = Object()
     curGameState.getPacmanPosition = lambda : position
     curGameState.getFood = lambda : foodGrid
     curGameState.getWalls = lambda : problem.walls
@@ -487,7 +499,7 @@ def foodHeuristic(state, problem):
     #if this is the first call to the heuristic for this problem, we need to construct
     #a dictionary that holds the distances between foods
     if DIST_DIC_KEY not in problem.heuristicInfo:
-        distDicT = {}
+        distDicT = {} 
         for foodi in foodList:
             #create a temporary dictionary to store the distances as they are calculated
             #this will be replaced by a OrderedDict at the end
@@ -496,78 +508,60 @@ def foodHeuristic(state, problem):
                 #don't keep distance to itself
                 if foodi==foodj:
                     continue
+                #use mazeDistance to increase accuracy of estimated distances
+                #since this only happens once per solve, is not too expensive
                 tmpDic[foodj]=mazeDistance(foodi, foodj, curGameState)
-            #create an OrderedDict sorted based on the value in tmpDic (distance between foods)
+            #create an OrderedDict sorted based on the distance between foods 
             tmp=sorted(tmpDic.items(), key=lambda i : i[1])
-            #print foodi, tmp
             distDicT[foodi] = collections.OrderedDict(tmp)
         problem.heuristicInfo[DIST_DIC_KEY]=distDicT
 
     distDic = problem.heuristicInfo[DIST_DIC_KEY]
-    #for f, dic in distDic.iteritems():
-    #    print f, ":"
-    #    s=""
-    #    for f2, dist in dic.iteritems():
-    #        s+=str(f2)+" "+str(dist)+", "
-    #    print s
+
+    ####
+    #General Strategy:
+    #Since the Minimum Spanning Tree of a Travelling Salesperson problem is always less than or equal to the optimal solution
+    #if we find the MST of the food, with the current pacman position as the root, the sum of the distances in the MST is an admissable heuristic for this problem
+    #therefore we implement Prim's algorithm to find the MST of the food
+    #this heuristic is also consistent because we are dealing with distances, so the triangle inequality holds
+    ####
+
     uneaten=set(foodList) #set of uneaten food
     #dictionary might have some food that has been eaten, this provides an easy way to check 
     #if a given piece of food has been eaten or not
     
+    #dictionary that tracks the minimum distance from the MST to all the food not in the MST
+    #at the start, this is just the distance from the root of the MST (current position) to each node in the tree
+    #NOTE: manhattan distance is used here as opposed to real distance. This increases the number of expanded nodes by a factor of ~10, but saves time
     minDistance = dict((food, manDist(position, food)) for food in foodList)
+    #minDistance = dict((food, mazeDistance(position, food, curGameState)) for food in foodList)
 
-    #find the closest food to the current position
-    #closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
-
-    
+    #total distance traversed    
     distance=0
     visited=set() #track food pieces that have been visited on this search
-    #visited.add(closestFood[0])
-    #cPos=closestFood[0]
-    #print "distance =", distance, "cPos=", cPos
+
+    #Note that while it is unlikely that the MST will change significantly between calls to the heuristic, regenerating it every time ensures all changes are properly updated
+
     #as long as have not visited all pieces of food
-    while len(visited) < len(foodList):
+    while minDistance:
         closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
         visited.add(closestFood[0])
         nextDistances=distDic[closestFood[0]]
-        #print "distance=", distance, "closestFood", closestFood
         distance+=closestFood[1]
-        del minDistance[closestFood[0]]
-        #print "nextDistances", nextDistances
+        del minDistance[closestFood[0]] #remove the visited food from the dictionary, as the shortest path to it has been found
+
         #since nextDistances is an OrderedDict, we will iterate of the food from closest to furthest from cPos
         for food, dist in nextDistances.iteritems():
             if food in visited or food not in uneaten:
+                #this condition serves as a double check we are not tracking any food that have already been visited or eaten
+                #note that nextDistances will have distances to all food that ever existed, even if they have been eaten already, necessitating the second check
                 continue
+            #if a shorter path to food has been found, update the distance in minDistance
             elif minDistance[food] >dist:
                 minDistance[food]=dist
-            #print "food=", food, "dist=", dist
-            #raw_input()
-    #print "distance=", distance
+
+    #return the length of the MST
     return distance
-
-
-    #import copy
-    #curGameState = copy.copy(problem)
-    #curGameState.getPacmanPosition = lambda : position
-    #curGameState.getFood = lambda : foodGrid
-    #curGameState.getWalls = lambda : problem.walls
-    #prob = AnyFoodSearchProblem(curGameState)
-
-    #closestFoodPath=search.breadthFirstSearch(prob)
-    #closestFoodDistance = len(closestFoodPath)
-
-    ##Since each "food" counts itself as a move, substract 1 from the closest food distance to
-    ##keep the distance correct (if food is 5 steps away, 4 steps come from this number, the fifth 
-    ##comes from the existence of that food)
-    #stepsToFood=closestFoodDistance-1 
-    #if closestFoodDistance ==0:
-    #    #this occurs if there is no food, or if the current position has food
-    #    #in this case, steps to food should also be 0
-    #    stepsToFood=0
-
-    #return stepsToFood + foodGrid.count()
-    
-
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
