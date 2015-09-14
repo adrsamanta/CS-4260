@@ -510,27 +510,32 @@ def foodHeuristic(state, problem):
     minDistance = dict((food, manDist(position, food)) for food in foodList)
 
     #find the closest food to the current position
-    closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
+    #closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
 
     
-    distance=closestFood[1]
+    distance=0
     visited=set() #track food pieces that have been visited on this search
-    visited.add(closestFood[0])
+    #visited.add(closestFood[0])
     #cPos=closestFood[0]
-
+    #print "distance =", distance, "cPos=", cPos
     #as long as have not visited all pieces of food
     while len(visited) < len(foodList):
-        nextDistances=distDic[cPos]
+        closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
+        visited.add(closestFood[0])
+        nextDistances=distDic[closestFood[0]]
+        #print "distance=", distance, "closestFood", closestFood
+        distance+=closestFood[1]
+        del minDistance[closestFood[0]]
         #print "nextDistances", nextDistances
         #since nextDistances is an OrderedDict, we will iterate of the food from closest to furthest from cPos
         for food, dist in nextDistances.iteritems():
-            if food not in visited and food in uneaten:#valid food
-                print "dist from", cPos, "to", food, "is", dist
-                visited.add(food)
-                cPos=food
-                distance+=dist
-                break
-    print "distance=", distance
+            if food in visited or food not in uneaten:
+                continue
+            elif minDistance[food] >dist:
+                minDistance[food]=dist
+            #print "food=", food, "dist=", dist
+            #raw_input()
+    #print "distance=", distance
     return distance
 
 
