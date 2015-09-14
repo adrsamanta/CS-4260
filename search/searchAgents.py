@@ -467,30 +467,93 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access
     problem.heuristicInfo['wallCount']
     """
+    import collections
+
+    #finds the manhatten distance between 2 positions
+    def manDist(pos1, pos2):
+        return abs(pos1[0]-pos2[0])+abs(pos1[1]-pos2[1])
+    DIST_DIC_KEY = "DIST_DIC"
     position, foodGrid = state
+    foodList = foodGrid.asList()
+    if len(foodList)==0:
+        return 0
+    #if this is the first call to the heuristic for this problem, we need to construct
+    #a dictionary that holds the distances between foods
+    if DIST_DIC_KEY not in problem.heuristicInfo:
+        distDicT = {}
+        for foodi in foodList:
+            #create a temporary dictionary to store the distances as they are calculated
+            #this will be replaced by a OrderedDict at the end
+            tmpDic={}
+            for foodj in foodList:
+                #don't keep distance to itself
+                if foodi==foodj:
+                    continue
+                tmpDic[foodj]=manDist(foodi, foodj)
+            #create an OrderedDict sorted based on the value in tmpDic (distance between foods)
+            tmp=sorted(tmpDic.items(), key=lambda i : i[1])
+            #print foodi, tmp
+            distDicT[foodi] = collections.OrderedDict(tmp)
+        problem.heuristicInfo[DIST_DIC_KEY]=distDicT
+
+    distDic = problem.heuristicInfo[DIST_DIC_KEY]
+    #for f, dic in distDic.iteritems():
+    #    print f, ":"
+    #    s=""
+    #    for f2, dist in dic.iteritems():
+    #        s+=str(f2)+" "+str(dist)+", "
+    #    print s
+    uneaten=set(foodList) #set of uneaten food
+    #dictionary might have some food that has been eaten, this provides an easy way to check 
+    #if a given piece of food has been eaten or not
+    
+    minDistance = dict((food, manDist(position, food)) for food in foodList)
+
+    #find the closest food to the current position
+    closestFood = min(minDistance.iteritems(), key = lambda x : x[1])
+
+    
+    distance=closestFood[1]
+    visited=set() #track food pieces that have been visited on this search
+    visited.add(closestFood[0])
+    #cPos=closestFood[0]
+
+    #as long as have not visited all pieces of food
+    while len(visited) < len(foodList):
+        nextDistances=distDic[cPos]
+        #print "nextDistances", nextDistances
+        #since nextDistances is an OrderedDict, we will iterate of the food from closest to furthest from cPos
+        for food, dist in nextDistances.iteritems():
+            if food not in visited and food in uneaten:#valid food
+                print "dist from", cPos, "to", food, "is", dist
+                visited.add(food)
+                cPos=food
+                distance+=dist
+                break
+    print "distance=", distance
+    return distance
 
 
+    #import copy
+    #curGameState = copy.copy(problem)
+    #curGameState.getPacmanPosition = lambda : position
+    #curGameState.getFood = lambda : foodGrid
+    #curGameState.getWalls = lambda : problem.walls
+    #prob = AnyFoodSearchProblem(curGameState)
 
-    import copy
-    curGameState = copy.copy(problem)
-    curGameState.getPacmanPosition = lambda : position
-    curGameState.getFood = lambda : foodGrid
-    curGameState.getWalls = lambda : problem.walls
-    prob = AnyFoodSearchProblem(curGameState)
+    #closestFoodPath=search.breadthFirstSearch(prob)
+    #closestFoodDistance = len(closestFoodPath)
 
-    closestFoodPath=search.breadthFirstSearch(prob)
-    closestFoodDistance = len(closestFoodPath)
+    ##Since each "food" counts itself as a move, substract 1 from the closest food distance to
+    ##keep the distance correct (if food is 5 steps away, 4 steps come from this number, the fifth 
+    ##comes from the existence of that food)
+    #stepsToFood=closestFoodDistance-1 
+    #if closestFoodDistance ==0:
+    #    #this occurs if there is no food, or if the current position has food
+    #    #in this case, steps to food should also be 0
+    #    stepsToFood=0
 
-    #Since each "food" counts itself as a move, substract 1 from the closest food distance to
-    #keep the distance correct (if food is 5 steps away, 4 steps come from this number, the fifth 
-    #comes from the existence of that food)
-    stepsToFood=closestFoodDistance-1 
-    if closestFoodDistance ==0:
-        #this occurs if there is no food, or if the current position has food
-        #in this case, steps to food should also be 0
-        stepsToFood=0
-
-    return stepsToFood + foodGrid.count()
+    #return stepsToFood + foodGrid.count()
     
 
 
