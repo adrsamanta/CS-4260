@@ -477,6 +477,13 @@ def foodHeuristic(state, problem):
     foodList = foodGrid.asList()
     if len(foodList)==0:
         return 0
+
+    import copy
+    curGameState = copy.copy(problem)
+    curGameState.getPacmanPosition = lambda : position
+    curGameState.getFood = lambda : foodGrid
+    curGameState.getWalls = lambda : problem.walls
+
     #if this is the first call to the heuristic for this problem, we need to construct
     #a dictionary that holds the distances between foods
     if DIST_DIC_KEY not in problem.heuristicInfo:
@@ -489,7 +496,7 @@ def foodHeuristic(state, problem):
                 #don't keep distance to itself
                 if foodi==foodj:
                     continue
-                tmpDic[foodj]=manDist(foodi, foodj)
+                tmpDic[foodj]=mazeDistance(foodi, foodj, curGameState)
             #create an OrderedDict sorted based on the value in tmpDic (distance between foods)
             tmp=sorted(tmpDic.items(), key=lambda i : i[1])
             #print foodi, tmp
