@@ -290,6 +290,7 @@ class CornersProblem(search.SearchProblem):
         #The state is (pacman_position, set of visited corners)
         "*** YOUR CODE HERE ***"
         self.startState = (self.startingPosition, frozenset())
+        self.heuristicInfo = {} # A dictionary for the heuristic to store information
 
     def getStartState(self):
         """
@@ -375,7 +376,85 @@ def cornersHeuristic(state, problem):
     walls = problem.walls # These are the walls of the maze, as a Grid (game.py)
 
     "*** YOUR CODE HERE ***"
-    return 0 # Default to trivial solution
+    import collections
+    
+    #finds the manhatten distance between 2 positions
+    def manDist(pos1, pos2):
+        return abs(pos1[0]-pos2[0])+abs(pos1[1]-pos2[1])
+    
+    #return 0 when goal state is found
+    if len(state[1]) == 4:
+        return 0
+    
+    #constant key into problem.heuristicInfo
+    DIST_DIC_KEY = "DIST_DIC"
+    
+    position, visitedCorners = state
+
+    #create a generic object with no attributes for use as a dummy game state object
+    class Object:
+        pass
+        
+    #Assemble an object that has the methods expected by the mazeDistance method
+    #since corners and position depend on the state, but the walls depends on the problem, a new object was needed to hold this data
+    curGameState = Object()
+    curGameState.getPacmanPosition = lambda : position
+    curGameState.getCorners = lambda : corners
+    curGameState.getWalls = lambda : problem.walls
+    
+    #if this is the first call to the heuristic for this problem, we need to construct
+    #a dictionary that holds the distances between corners
+    if DIST_DIC_KEY not in problem.heuristicInfo:
+        distDicT = {}
+        for corneri in corners:
+            #create a temporary dictionary to store the distances as they are calculated
+            #this will be replaced by a OrderedDict at the end
+            tmpDic={}
+            for cornerj in corners:
+                #don't keep distance to itself
+                if corneri==cornerj:
+                    continue
+                #use mazeDistance to increase accuracy of estimated distances
+                #since this only happens once per solve, is not too expensive
+                tmpDic[cornerj]=mazeDistance(corneri, cornerj, curGameState)
+            #create an OrderedDict sorted based on the distance between corners
+            tmp=sorted(tmpDic.items(), key=lambda i : i[1])
+            distDicT[corneri] = collections.OrderedDict(tmp)
+        problem.heuristicInfo[DIST_DIC_KEY]=distDicT
+
+    distDic = problem.heuristicInfo[DIST_DIC_KEY]
+
+    #dictionary that tracks the minimum distance from the MST to all the corners not in the MST
+    #at the start, this is just the distance from the root of the MST (current position) to each node in the tree
+    #NOTE: manhattan distance is used here as opposed to real distance. This increases the number of expanded nodes by a factor of ~10, but saves time
+
+    minDistance = dict((corner, manDist(position, corner)) for corner in corners if corner not in visitedCorners)
+    
+    #total distance traversed
+    distance=0
+    visited=set() #track corners that have been visited on this search
+
+    
+    #as long as have not visited all corners
+    while minDistance:
+        closestCorner = min(minDistance.iteritems(), key = lambda x : x[1])
+        visited.add(closestCorner[0])
+        nextDistances=distDic[closestCorner[0]]
+        distance+=closestCorner[1]
+        del minDistance[closestCorner[0]] #remove the visited corner from the dictionary, as the shortest path to it has been found
+        
+        #since nextDistances is an OrderedDict, we will iterate of the corner from closest to furthest from cPos
+        for corner, dist in nextDistances.iteritems():
+            if corner in visited or corner in visitedCorners:
+                #this condition serves as a double check we are not tracking any corner that have already been visited or eaten
+                #note that nextDistances will have distances to all corners that ever existed, even if they have been visited already, necessitating the second check
+                continue
+            #if a shorter path to food has been found, update the distance in minDistance
+            elif minDistance[corner] >dist:
+                minDistance[corner]=dist
+
+    #return the length of the MST
+    return distance
 
 class AStarCornersAgent(SearchAgent):
     "A SearchAgent for FoodSearchProblem using A* and your foodHeuristic"
