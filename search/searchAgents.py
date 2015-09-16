@@ -551,14 +551,36 @@ def foodHeuristic(state, problem):
     #finds the manhatten distance between 2 positions
     def manDist(pos1, pos2):
         return abs(pos1[0]-pos2[0])+abs(pos1[1]-pos2[1])
+    #grid is a grid, pos is a 2 tuple representing a position. returns grid[pos]
+    def getPosInGrid(grid, pos):
+        return grid[pos[0]][pos[1]]
     
+    #creates an ordered dic of the distances from foodi to all the food in foodList, based on the info in curGameState
+    #food is sorted in the dictionary from closest to farthest
+    def createOrderedDistanceDic(foodi, foodList, curGameState):
+        #create a temporary dictionary to store the distances as they are calculated
+        #this will be replaced by a OrderedDict at the end
+        tmpDic={}
+        for foodj in foodList:
+            #don't keep distance to itself
+            if foodi==foodj:
+                continue
+            #use mazeDistance to increase accuracy of estimated distances
+            #since this only happens once per solve, is not too expensive
+            tmpDic[foodj]=mazeDistance(foodi, foodj, curGameState)
+        #create an OrderedDict sorted based on the distance between foods 
+        tmp=sorted(tmpDic.items(), key=lambda i : i[1])
+        return collections.OrderedDict(tmp)
+
     #constant key into problem.heuristicInfo
     DIST_DIC_KEY = "DIST_DIC"
+    #Constant key for first position the heuristic is called on
+    FIRST_POS_KEY = "FIRST_POS"
     
     position, foodGrid = state
 
     foodList = foodGrid.asList()
-    
+
     if len(foodList)==0:
         #if foodList is 0, problem is solved
         #check here to save computation time, and also to avoid messy corner cases down the line
@@ -578,24 +600,21 @@ def foodHeuristic(state, problem):
     #if this is the first call to the heuristic for this problem, we need to construct
     #a dictionary that holds the distances between foods
     if DIST_DIC_KEY not in problem.heuristicInfo:
-        distDicT = {} 
+        #save the first position
+        #this is necessary because if this position has food in it, in this call that food will not be in foodList, because it has been eaten
+        #that food might exist in later calls, however, so it has to be in distDic. By saving it here, it is easy to check in future calls if this needs to be calculated
+        problem.heuristicInfo[FIRST_POS_KEY] = position
+        distDicT = {}
+         
         for foodi in foodList:
-            #create a temporary dictionary to store the distances as they are calculated
-            #this will be replaced by a OrderedDict at the end
-            tmpDic={}
-            for foodj in foodList:
-                #don't keep distance to itself
-                if foodi==foodj:
-                    continue
-                #use mazeDistance to increase accuracy of estimated distances
-                #since this only happens once per solve, is not too expensive
-                tmpDic[foodj]=mazeDistance(foodi, foodj, curGameState)
-            #create an OrderedDict sorted based on the distance between foods 
-            tmp=sorted(tmpDic.items(), key=lambda i : i[1])
-            distDicT[foodi] = collections.OrderedDict(tmp)
+            distDicT[foodi]=createOrderedDistanceDic(foodi, foodList, curGameState)
         problem.heuristicInfo[DIST_DIC_KEY]=distDicT
-
+    #checks if the first position this heuristic was called on is not in the distance dictionary and that the position should be (it has food)
+    elif problem.heuristicInfo[FIRST_POS_KEY] not in  problem.heuristicInfo[DIST_DIC_KEY] and getPosInGrid(foodGrid, problem.heuristicInfo[FIRST_POS_KEY]):
+        foodi=problem.heuristicInfo[FIRST_POS_KEY]
+        problem.heuristicInfo[DIST_DIC_KEY][foodi]=createOrderedDistanceDic(foodi, foodList, curGameState)
     distDic = problem.heuristicInfo[DIST_DIC_KEY]
+
 
     ####
     #General Strategy:
@@ -604,10 +623,11 @@ def foodHeuristic(state, problem):
     #therefore we implement Prim's algorithm to find the MST of the food
     #this heuristic is also consistent because we are dealing with distances, so the triangle inequality holds
     ####
-
-    uneaten=set(foodList) #set of uneaten food
-    #dictionary might have some food that has been eaten, this provides an easy way to check 
+    
+    #the dictionary might have some food that has been eaten, this provides an easy way to check 
     #if a given piece of food has been eaten or not
+    uneaten=set(foodList) #set of uneaten food
+    
     
     #dictionary that tracks the minimum distance from the MST to all the food not in the MST
     #at the start, this is just the distance from the root of the MST (current position) to each node in the tree
