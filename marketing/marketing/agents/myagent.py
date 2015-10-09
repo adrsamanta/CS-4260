@@ -11,6 +11,8 @@ class MyAgent(Agent):
     sortedNodes = []
     bestSolution = set()
     bestSolutionUtility = -1
+    network=None
+    degrees=[]
 
     def selectNodes(self, network, t):
         # select a subset of nodes (up to budget) to seed at current time step t
@@ -19,13 +21,17 @@ class MyAgent(Agent):
         self.maxDegree = network.maxDegree()
         #print "max degree", self.maxDegree
         self.sortedNodes = self.initializeList(network)
+        #track the upper 2*budget degrees, to make finding these faster in calcBounds
+        #track 2*budget because will never need more than that in bounds calc
+        self.degrees=[network.degree(self.sortedNodes[x]) for x in range(2*self.budget)]
         self.setBestSolution(set(self.sortedNodes[:self.budget]), network)
+        self.network=network
         #print "Best Initial Solution:", self.bestSolution
         #print "best utility: ", self.bestSolutionUtility
         self.branchAndBound([],network,set(),(0,network.size()))
         #find max degree
         #do branch and bound search
-
+        
         # your code goes here
         #print "Best Final Solution:", self.bestSolution
         #print "best Final utility: ", self.bestSolutionUtility
@@ -35,8 +41,19 @@ class MyAgent(Agent):
         return sorted(range(network.size()),key = lambda x: network.degree(x), reverse=True)
     
     #now takes length of neighbors, as opposed to neighbors, to speed calculation
-    def calcBounds(self, curr_assignment, lenneighbors):
-        return lenneighbors,lenneighbors+(self.budget - len(curr_assignment)) * self.maxDegree
+    def calcBounds(self, curr_assignment, lenneighbors, ):
+        numRemaining=self.budget-len(curr_assignment)
+        max_num_poss=0
+        #get a tighter upper bound by adding degrees of biggest non-included nodes 
+        for degree, node in zip(self.degrees, self.sortedNodes): #loops is still pretty slow, try to speed up somehow
+            if node not in curr_assignment:
+                max_num_poss+=degree
+                numRemaining-=1
+            if numRemaining==0:
+                break
+
+        return lenneighbors, lenneighbors+max_num_poss
+        #return lenneighbors,lenneighbors+(self.budget - len(curr_assignment)) * self.maxDegree
         
     def calcUtility(self, network, solution):
         neighbors = set()
