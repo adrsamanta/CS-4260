@@ -28,7 +28,7 @@ class MyAgent(Agent):
         self.network=network
         #print "Best Initial Solution:", self.bestSolution
         #print "best utility: ", self.bestSolutionUtility
-        self.branchAndBound([],network,set(),(0,network.size()))
+        self.branchAndBound([],network,set(),(0,network.size()), self.sortedNodes[:])
         #find max degree
         #do branch and bound search
         
@@ -69,7 +69,7 @@ class MyAgent(Agent):
         self.bestSolutionUtility = utility if utility else self.calcUtility(network, solution)
     
     #NOTE: curr_assignment is now a list, because offered slight speedup
-    def branchAndBound(self, curr_assignment, network, neighbors, bounds):
+    def branchAndBound(self, curr_assignment, network, neighbors, bounds, nodeList):
         #print "Entered B&B"
         lenNeighbors=bounds[0]
         if len(curr_assignment) == self.budget:
@@ -78,18 +78,19 @@ class MyAgent(Agent):
             if lenNeighbors > self.bestSolutionUtility:
                 self.setBestSolution(curr_assignment, network, lenNeighbors)
             return
-        for node in self.sortedNodes:
+        for node in nodeList:
             #print "Checking node:", node
             if node in curr_assignment:
                 continue
             else:
+                nodeList.remove(node)
                 new_neighbors = neighbors.union(set(network.getNeighbors(node)))
                 new_assignment = curr_assignment + [node]
                 node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
                 #print "checking assignment with bounds", node_bounds
                 if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
-                    self.branchAndBound(new_assignment, network, new_neighbors, node_bounds)
-
+                    self.branchAndBound(new_assignment, network, new_neighbors, node_bounds, nodeList[:])
+           
     
     
     def display():
