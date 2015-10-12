@@ -40,8 +40,10 @@ cascade = cascadeModule.CascadeModel(Config)
 
 avetime = 0
 aveutility = 0
+#numSamples=10
+#MODIFIED______________________________________________
 numSamples = 10
-
+#END MODIFIED______________________________________________
 for s in range(numSamples):
     random.seed(s)
 
