@@ -30,8 +30,8 @@ class MyAgent(Agent):
         #print "best utility: ", self.bestSolutionUtility
 
         #self.branchAndBound([],network,set(),(0,network.size()), self.sortedNodes[:])
-        self.branchAndBound2([],network,set(),(0,network.size()), self.sortedNodes[:])
-        #self.exhaustive([],network,set(), self.sortedNodes[:])
+        #self.branchAndBound2([],network,set(),(0,network.size()), 0)
+        self.exhaustive([],network,set(), 0)
 
         # your code goes here
         #print "Best Final Solution:", self.bestSolution
@@ -70,8 +70,34 @@ class MyAgent(Agent):
         self.bestSolutionUtility = utility if utility else self.calcUtility(network, solution)
     
     #NOTE: curr_assignment is now a list, because offered slight speedup
-    def branchAndBound(self, curr_assignment, network, neighbors, bounds, nodeList):
+    #NOTE: currently has a bug, will not check all assignments. 
+    #def branchAndBound(self, curr_assignment, network, neighbors, bounds, nodeList):
+    #    #print "Entered B&B"
+    #    lenNeighbors=bounds[0]
+    #    if len(curr_assignment) == self.budget:
+    #        #print "found assignment of 4:", curr_assignment
+    #        #print "has utility", len(neighbors)
+    #        if lenNeighbors > self.bestSolutionUtility:
+    #            self.setBestSolution(curr_assignment, network, lenNeighbors)
+    #        return
+    #    for node in nodeList:
+    #        #print "Checking node:", node
+    #        if node in curr_assignment:
+    #            continue
+    #        else:
+    #            nodeList.remove(node)
+    #            new_neighbors = neighbors.union(set(network.getNeighbors(node)))
+    #            new_assignment = curr_assignment + [node]
+    #            node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
+    #            #print "checking assignment with bounds", node_bounds
+    #            if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
+    #                self.branchAndBound(new_assignment, network, new_neighbors, node_bounds, nodeList[:])
+    
+    #should properly check all combinations, now don't need to pass/copy the list
+    #not optimal
+    def branchAndBound2(self, curr_assignment, network, neighbors, bounds, nodeListI):
         #print "Entered B&B"
+        nodeList=self.sortedNodes
         lenNeighbors=bounds[0]
         if len(curr_assignment) == self.budget:
             #print "found assignment of 4:", curr_assignment
@@ -79,29 +105,8 @@ class MyAgent(Agent):
             if lenNeighbors > self.bestSolutionUtility:
                 self.setBestSolution(curr_assignment, network, lenNeighbors)
             return
-        for i, node in enumerate(nodeList):
-            #print "Checking node:", node
-            if node in curr_assignment:
-                continue
-            else:
-                nodeList.remove(node)
-                new_neighbors = neighbors.union(set(network.getNeighbors(node)))
-                new_assignment = curr_assignment + [node]
-                node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
-                #print "checking assignment with bounds", node_bounds
-                if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
-                    self.branchAndBound(new_assignment, network, new_neighbors, node_bounds, nodeList[:])
-
-    def branchAndBound2(self, curr_assignment, network, neighbors, bounds, nodeList):
-        #print "Entered B&B"
-        lenNeighbors=bounds[0]
-        if len(curr_assignment) == self.budget:
-            #print "found assignment of 4:", curr_assignment
-            #print "has utility", len(neighbors)
-            if lenNeighbors > self.bestSolutionUtility:
-                self.setBestSolution(curr_assignment, network, lenNeighbors)
-            return
-        for i, node in enumerate(nodeList):
+        for i in range(nodeListI, len(nodeList)):
+            node=nodeList[i]
             #print "Checking node:", node
             if node in curr_assignment:
                 continue
@@ -112,23 +117,27 @@ class MyAgent(Agent):
                 node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
                 #print "checking assignment with bounds", node_bounds
                 if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
-                    self.branchAndBound2(new_assignment, network, new_neighbors, node_bounds, nodeList[i:])
+                    self.branchAndBound2(new_assignment, network, new_neighbors, node_bounds, i+1)
     
-    #def exhaustive(self, curr_assignment, network, neighbors, nodeList):
-    #    lenNeighbors=len(neighbors)
-    #    if len(curr_assignment) == self.budget:
-    #        #print "found assignment of 4:", curr_assignment
-    #        #print "has utility", len(neighbors)
-    #        if lenNeighbors > self.bestSolutionUtility:
-    #            self.setBestSolution(curr_assignment, network, lenNeighbors)
-    #    for node in nodeList:
-    #        if node in curr_assignment:
-    #            continue
-    #        else:
-    #            nodeList.remove(node)
-    #            new_neighbors = neighbors.union(set(network.getNeighbors(node)))
-    #            new_assignment = curr_assignment + [node]
-    #            self.exhaustive(new_assignment, network, new_neighbors, nodeList[:])
+    #non optimal, but is supposed to check all combinations. 
+    def exhaustive(self, curr_assignment, network, neighbors, nodeListI):
+        nodeList=self.sortedNodes
+        lenNeighbors=len(neighbors)
+        if len(curr_assignment) == self.budget:
+            #print "found assignment of 4:", curr_assignment
+            #print "has utility", len(neighbors)
+            if lenNeighbors > self.bestSolutionUtility:
+                self.setBestSolution(curr_assignment, network, lenNeighbors)
+            return
+        for i in range(nodeListI, len(nodeList)):
+            node=nodeList[i]
+            if node in curr_assignment:
+                continue
+            else:
+                
+                new_neighbors = neighbors.union(set(network.getNeighbors(node)))
+                new_assignment = curr_assignment + [node]
+                self.exhaustive(new_assignment, network, new_neighbors, i+1)
     
     
     def display():
