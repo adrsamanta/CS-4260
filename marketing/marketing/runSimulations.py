@@ -54,7 +54,7 @@ for s in range(numSamples):
     
     # run simulations
     budget = int(ConfigSectionMap(Config, "AgentParameters")["budget"])
-    
+    q=None
     start = time.time()
     for t in range(0,timeSteps):
         selected = EnforceSelectionFeasibility(int(math.floor(budget)), agent.selectNodes(copy.deepcopy(nw),t))
@@ -65,6 +65,8 @@ for s in range(numSamples):
         budget *= 1+interest
         
     end = time.time()
+
+    #print "calced best solution utility", adopters
     aveutility += float(adopters)
         
     avetime += end - start

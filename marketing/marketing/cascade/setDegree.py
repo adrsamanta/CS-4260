@@ -18,5 +18,5 @@ class CascadeModel(Cascade):
                     network.nodes[n].adopt()
                     network.changed.append(n)
                     inds.append(n)
-
+        #print "inds=", inds
         return len(inds)
