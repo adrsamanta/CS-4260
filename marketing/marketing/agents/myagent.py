@@ -21,29 +21,16 @@ class MyAgent(Agent):
         selected = []
         self.network=network
         self.maxDegree = network.maxDegree()
-        #print "max degree", self.maxDegree
+
+        #sort nodes by number of neighbors so we can choose nodes on order of neighbors during the branch and bound search
         self.sortedNodes = self.initializeList(network)
-        #track the upper 2*budget degrees, to make finding these faster in calcBounds
-        #track 2*budget because will never need more than that in bounds calc
+
         self.degrees=[network.degree(self.sortedNodes[x]) for x in range(2*self.budget)]
+        #Best initial estimate to use for initial lower and upper bounds in Branch and Bound
         self.setBestSolution(set(self.sortedNodes[:self.budget]), network)
         
-        #print "Best Initial Solution:", self.bestSolution
-        #print "best utility: ", self.bestSolutionUtility
-
-        #self.branchAndBound([],network,set(),(0,network.size()), self.sortedNodes[:])
         self.branchAndBound2([],network,set(),(0,network.size()), 0)
-        #self.exhaustive([],network,set(), 0)
         
-        # your code goes here
-        #print "Best Final Solution:", self.bestSolution
-        #print "calc value for BFSU", self.calcUtility(self.bestSolution)
-        #neighbors = set()
-        #network=self.network
-        #for node in self.bestSolution:
-        #    neighbors = neighbors.union(set(network.getNeighbors(node)))
-        #print "neighbors=", neighbors
-        #print "best Final utility: ", self.bestSolutionUtility
         return list(self.bestSolution)
     
     def initializeList(self, network):
@@ -62,79 +49,40 @@ class MyAgent(Agent):
                 break
 
         return lenneighbors, lenneighbors+max_num_poss
-        #return lenneighbors,lenneighbors+(self.budget - len(curr_assignment)) * self.maxDegree
         
+    #Calculate the utility of a given solution
     def calcUtility(self, solution):
         neighbors = set(solution)
         network=self.network
         for node in solution:
             neighbors = neighbors.union(set(network.getNeighbors(node)))
         return len(neighbors)
-    
-    def getUtility(self, neighbors, curr_assignment):
-        return len(neighbors)
 
+    #Set the best Solution and best Solution Utility values
     def setBestSolution(self, solution, network, utility=0):
         self.bestSolution = solution
         self.bestSolutionUtility = utility if utility else self.calcUtility(solution)
     
-    #NOTE: curr_assignment is now a list, because offered slight speedup
-    #NOTE: currently has a bug, will not check all assignments. 
-    #def branchAndBound(self, curr_assignment, network, neighbors, bounds, nodeList):
-    #    #print "Entered B&B"
-    #    lenNeighbors=bounds[0]
-    #    if len(curr_assignment) == self.budget:
-    #        #print "found assignment of 4:", curr_assignment
-    #        #print "has utility", len(neighbors)
-    #        if lenNeighbors > self.bestSolutionUtility:
-    #            self.setBestSolution(curr_assignment, network, lenNeighbors)
-    #        return
-    #    for node in nodeList:
-    #        #print "Checking node:", node
-    #        if node in curr_assignment:
-    #            continue
-    #        else:
-    #            nodeList.remove(node)
-    #            new_neighbors = neighbors.union(set(network.getNeighbors(node)))
-    #            new_assignment = curr_assignment + [node]
-    #            node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
-    #            #print "checking assignment with bounds", node_bounds
-    #            if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
-    #                self.branchAndBound(new_assignment, network, new_neighbors, node_bounds, nodeList[:])
-    
-    #should properly check all combinations, now don't need to pass/copy the list
-    #not optimal
+    #Branch and Bound search of the graph, prunes subrees when their upper bound is not greater than the best Solution Utility or the utility of their parent
     def branchAndBound2(self, curr_assignment, network, neighbors, bounds, nodeListI):
-        #print "Entered B&B"
         nodeList=self.sortedNodes
         lenNeighbors=bounds[0]
+        #Base case when we have an assignment the same size of the budget
         if len(curr_assignment) == self.budget:
-            #print "found assignment of 4:", curr_assignment
-            #print "has utility", len(neighbors)
             if lenNeighbors > self.bestSolutionUtility:
                 self.setBestSolution(curr_assignment, network, lenNeighbors)
             return
         for i in range(nodeListI, len(nodeList)):
             node=nodeList[i]
-            #print "Checking node:", node
             if node in curr_assignment:
                 continue
             else:
-                #nodeList.remove(node)
                 new_neighbors = neighbors.union(set(network.getNeighbors(node)))
                 new_neighbors.add(node)
                 new_assignment = curr_assignment + [node]
                 node_bounds = self.calcBounds(new_assignment, len(new_neighbors))
-                #print "checking assignment with bounds", node_bounds
                 if node_bounds[1] > bounds[0] and node_bounds[1]>self.bestSolutionUtility:
                     self.branchAndBound2(new_assignment, network, new_neighbors, node_bounds, i+1)
-    
-    #non optimal, but is supposed to check all combinations. 
-    def exhaustive(self, curr_assignment, network, neighbors, nodeListI):
-        nodeList=range(network.size())
-        for assignment in itertools.combinations(nodeList, 4):
-            if self.calcUtility(assignment)>self.bestSolutionUtility:
-                self.setBestSolution(assignment, network)
 
     
     def display():
