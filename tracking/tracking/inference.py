@@ -144,14 +144,15 @@ class ExactInference(InferenceModule):
              of None will be returned if, and only if, the ghost is
              captured).
         """
-        
+        deb=False
+
         noisyDistance = observation
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
-
-        print "noisyDistance=", noisyDistance
-        print "pacmanPos", pacmanPosition
-
+        if deb:
+            print "noisyDistance=", noisyDistance
+            print "pacmanPos", pacmanPosition
+        
         #map to store probability of each true distance
         #defined as the sum of P(g at p) for all p at the given td
         tdMap={}
@@ -182,11 +183,11 @@ class ExactInference(InferenceModule):
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
-       
-        print "initial belief state"
-        for p in self.legalPositions:
-            print p, self.beliefs[p]
-        print ""
+        if deb:
+            print "initial belief state"
+            for p in self.legalPositions:
+                print p, self.beliefs[p]
+            print ""
         #trying to find P(ghost at p | prior belief state AND current observation)
         #can get P(noisyDistance | TrueDistance). 
         allPossible = util.Counter()
@@ -200,27 +201,33 @@ class ExactInference(InferenceModule):
                 if trueDistance==0:
                     #no probability of ghost here, bc is current position
                     allPossible[p]=0
-                elif emissionModel[trueDistance] > 0:
+                elif emissionModel[trueDistance] > 0 and getPofTD(trueDistance)>0:
                     #prob of ghost at p given its at td is the prob its at p/the prob its at td.
                     probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
-                    print ""
-                    print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
-                    print "P(p|td)=", probPgivenTD
                     #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
                     probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
-                    print "P(nd | td)=", emissionModel[trueDistance]
-                    print "P(td|nd)=", probTDgivenND
-                    print ""
+                    if deb:
+                        print ""
+                        print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
+                        print "P(p|td)=", probPgivenTD
+                        print "P(nd | td)=", emissionModel[trueDistance]
+                        print "P(td|nd)=", probTDgivenND
+                        print ""
                     #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
                     allPossible[p]=probPgivenTD*probTDgivenND
+        if deb:
+            print "final belief state"
+            for p in self.legalPositions:
+                print p, allPossible[p]
         
-        print "final belief state"
-        for p in self.legalPositions:
-            print p, allPossible[p]
-        raw_input()
         "*** END YOUR CODE HERE ***"
 
         allPossible.normalize()
+        if deb:
+            print "normalized belief state"
+            for p in self.legalPositions:
+                print p, allPossible[p]
+            raw_input()
         self.beliefs = allPossible
 
     def elapseTime(self, gameState):
