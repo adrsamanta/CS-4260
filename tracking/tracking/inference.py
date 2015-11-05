@@ -149,18 +149,75 @@ class ExactInference(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
 
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        print "noisyDistance=", noisyDistance
+        print "pacmanPos", pacmanPosition
+
+        #map to store probability of each true distance
+        #defined as the sum of P(g at p) for all p at the given td
+        tdMap={}
+        #gets the probability of a true distance by first checking the map,
+        # and if its not there, calculating it
+        def getPofTD(td):
+            iPos=pacmanPosition
+            if td in tdMap:
+                return tdMap[td]
+            prob=0.0
+            #iterate over possible offsets from iPos
+            for i in range(1, td):
+                #is the 4 positions offset of initial position by i that are td away
+                allPoss=((iPos[0]+i, iPos[1]+td-i), (iPos[0]-i, iPos[1]+td-i),
+                         (iPos[0]+i, iPos[1]-(td-i)), (iPos[0]-i, iPos[1]-(td-i)))
+                for k in allPoss:
+                    if k in self.legalPositions:
+                        prob+=self.beliefs[k]
+            #need to add in spots directly above, below, left, right
+            maxRange=((iPos[0]+td, iPos[1]), (iPos[0], iPos[1]+td), 
+                      (iPos[0]-td, iPos[1]), (iPos[0], iPos[1]-td))
+            for k in maxRange:
+                if k in self.legalPositions:
+                        prob+=self.beliefs[k]
+            tdMap[td]=prob
+            return prob
 
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
-        allPossible = util.Counter()
+       
+        print "initial belief state"
         for p in self.legalPositions:
-            trueDistance = util.manhattanDistance(p, pacmanPosition)
-            if emissionModel[trueDistance] > 0:
-                allPossible[p] = 1.0
-
+            print p, self.beliefs[p]
+        print ""
+        #trying to find P(ghost at p | prior belief state AND current observation)
+        #can get P(noisyDistance | TrueDistance). 
+        allPossible = util.Counter()
+        #make a copy of beliefs for modification
+        allPossible+=self.beliefs
+        if noisyDistance==None:
+            allPossible[self.getJailPosition()]=1.0
+        else:
+            for p in self.legalPositions:
+                trueDistance = util.manhattanDistance(p, pacmanPosition)
+                if trueDistance==0:
+                    #no probability of ghost here, bc is current position
+                    allPossible[p]=0
+                elif emissionModel[trueDistance] > 0:
+                    #prob of ghost at p given its at td is the prob its at p/the prob its at td.
+                    probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
+                    print ""
+                    print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
+                    print "P(p|td)=", probPgivenTD
+                    #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
+                    probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
+                    print "P(nd | td)=", emissionModel[trueDistance]
+                    print "P(td|nd)=", probTDgivenND
+                    print ""
+                    #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
+                    allPossible[p]=probPgivenTD*probTDgivenND
+        
+        print "final belief state"
+        for p in self.legalPositions:
+            print p, allPossible[p]
+        raw_input()
         "*** END YOUR CODE HERE ***"
 
         allPossible.normalize()
