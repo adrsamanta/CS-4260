@@ -55,21 +55,10 @@ class GameScoreTest(testClasses.TestCase):
     def execute(self, grades, moduleDict, solutionDict):
         ghosts = [SeededRandomGhostAgent(i) for i in range(1,self.numGhosts+1)]
         pac = bustersAgents.GreedyBustersAgent(0, inference = self.inference, ghostAgents = ghosts, observeEnable = self.observe_enable, elapseTimeEnable = self.elapse_enable)
-        #if self.inference == "ExactInference":
-        #    pac.inferenceModules = [moduleDict['inference'].ExactInference(a) for a in ghosts]
-        #else:
-        #    print "Error inference type %s -- not implemented" % self.inference
-        #    return
 
         stats = run(self.layout_str, pac, ghosts, self.question.getDisplay(), nGames=self.numRuns, maxMoves=self.maxMoves, quiet = False)
-        aboveCount = [s >= self.min_score for s in stats['scores']].count(True)
-        msg = "%s) Games won on %s with score above %d: %d/%d" % (self.layout_name, grades.currentQuestion, self.min_score, aboveCount, self.numRuns)
-        grades.addMessage(msg)
-        if aboveCount >= self.numWinsForCredit:
-            grades.assignFullCredit()
-            return self.testPass(grades)
-        else:
-            return self.testFail(grades)
+
+        return self.testFail(grades)
 
     def writeSolution(self, moduleDict, filePath):
         handle = open(filePath, 'w')
