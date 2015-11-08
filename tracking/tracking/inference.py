@@ -196,7 +196,7 @@ class ExactInference(InferenceModule):
                 allPossible[p]=0
             allPossible[self.getJailPosition()]=1.0
         else:
-            allPossible+=self.beliefs
+            #allPossible+=self.beliefs
             for p in self.legalPositions:
                 trueDistance = util.manhattanDistance(p, pacmanPosition)
                 if trueDistance==0:
