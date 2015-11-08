@@ -156,6 +156,7 @@ class ExactInference(InferenceModule):
         #map to store probability of each true distance
         #defined as the sum of P(g at p) for all p at the given td
         tdMap={}
+        
         #gets the probability of a true distance by first checking the map,
         # and if its not there, calculating it
         def getPofTD(td):
@@ -180,9 +181,6 @@ class ExactInference(InferenceModule):
             tdMap[td]=prob
             return prob
 
-        # Replace this code with a correct observation update
-        # Be sure to handle the "jail" edge case where the ghost is eaten
-        # and noisyDistance is None
         if deb:
             print "initial belief state"
             for p in self.legalPositions:
@@ -192,10 +190,13 @@ class ExactInference(InferenceModule):
         #can get P(noisyDistance | TrueDistance). 
         allPossible = util.Counter()
         #make a copy of beliefs for modification
-        allPossible+=self.beliefs
+        
         if noisyDistance==None:
+            for p in self.legalPositions:
+                allPossible[p]=0
             allPossible[self.getJailPosition()]=1.0
         else:
+            allPossible+=self.beliefs
             for p in self.legalPositions:
                 trueDistance = util.manhattanDistance(p, pacmanPosition)
                 if trueDistance==0:

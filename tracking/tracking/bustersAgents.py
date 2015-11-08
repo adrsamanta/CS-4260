@@ -189,7 +189,7 @@ class GreedyBustersAgent(BustersAgent):
                 bestDist=newDist
         
         print("action=", bestAction)
-        input() 
+        raw_input() 
 #         newPositions=[(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
 #         _, bestAction = min([(self.distancer.getDistance(nPos, closestPos), action) for nPos, action in newPositions], key= lambda x: x[0])
         
