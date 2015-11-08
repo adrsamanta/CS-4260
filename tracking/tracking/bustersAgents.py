@@ -18,7 +18,7 @@ from game import Directions
 from keyboardAgents import KeyboardAgent
 import inference
 import busters
-from _operator import pos
+
 
 class NullGraphics:
     "Placeholder for graphics"
