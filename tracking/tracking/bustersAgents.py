@@ -157,6 +157,8 @@ class GreedyBustersAgent(BustersAgent):
              indices into this list should be 1 less than indices into the
              gameState.getLivingGhosts() list.
         """
+        # raw_input()
+        # print "\n\n\n\n\n******************\n\n\n\n\n\n"
         pacmanPosition = gameState.getPacmanPosition()
         legal = [a for a in gameState.getLegalPacmanActions()]
         livingGhosts = gameState.getLivingGhosts()
@@ -172,11 +174,11 @@ class GreedyBustersAgent(BustersAgent):
         for dist in livingGhostPositionDistributions:
             pos=dist.argMax()
             distance=self.distancer.getDistance(pacmanPosition, pos)
-            if distance>minDist and minDist!=-1:
+            if distance>minDist or minDist == -1:
                 minDist=distance
                 closestPos=pos
-        print "current pos=", pacmanPosition
-        print "Closest pos=", closestPos
+        # print "current pos=", pacmanPosition
+        # print "Closest pos=", closestPos
         
         
         bestAction=None
@@ -188,8 +190,9 @@ class GreedyBustersAgent(BustersAgent):
                 bestAction=action
                 bestDist=newDist
         
-        print("action=", bestAction)
-        raw_input() 
+        # print("action=", bestAction)
+        # input() 
+
 #         newPositions=[(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
 #         _, bestAction = min([(self.distancer.getDistance(nPos, closestPos), action) for nPos, action in newPositions], key= lambda x: x[0])
         

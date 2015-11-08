@@ -289,6 +289,8 @@ class ExactInference(InferenceModule):
         packmanPosition = gameState.getPacmanPosition()
         possiblePositions = util.Counter()
 
+        #if 
+
         for pos in self.legalPositions:
             if self.beliefs[pos] > 0:
 
@@ -299,7 +301,6 @@ class ExactInference(InferenceModule):
                     #Pr( ghost is at p at t + 1 | ghost is at oldPos at t ) * Pr(ghost is at oldPos at t)
                     probAtPosTPlus1 = prob * probAtOldPosition
                     #print(probAtPosTPlus1)
-                    oldPP = possiblePositions[position]
                     possiblePositions[position] += probAtPosTPlus1
 
         possiblePositions.normalize()
