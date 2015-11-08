@@ -10,3 +10,4 @@ search/test1.txt
 *.suo
 tracking/tracking/.project
 *.pydevproject
+tracking/tracking/test_cases/q3/1-ExactObserveElapse-copy.solution

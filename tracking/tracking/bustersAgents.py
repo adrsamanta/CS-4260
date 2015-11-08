@@ -177,10 +177,23 @@ class GreedyBustersAgent(BustersAgent):
             if distance>minDist and minDist!=-1:
                 minDist=distance
                 closestPos=pos
+        print "current pos=", pacmanPosition
+        print "Closest pos=", closestPos
         
-              
-        newPositions=[(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
-        _, bestAction = min([(self.distancer.getDistance(nPos, closestPos), action) for nPos, action in newPositions], key= lambda x: x[0])
+        
+        bestAction=None
+        bestDist=minDist
+        for action in legal:
+            newPos=Actions.getSuccessor(pacmanPosition, action)
+            newDist=self.distancer.getDistance(newPos, closestPos)
+            if newDist<bestDist:
+                bestAction=action
+                bestDist=newDist
+        
+        print("action=", bestAction)
+        input() 
+#         newPositions=[(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
+#         _, bestAction = min([(self.distancer.getDistance(nPos, closestPos), action) for nPos, action in newPositions], key= lambda x: x[0])
         
         return bestAction
         
