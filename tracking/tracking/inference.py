@@ -159,27 +159,27 @@ class ExactInference(InferenceModule):
         
         #gets the probability of a true distance by first checking the map,
         # and if its not there, calculating it
-        def getPofTD(td):
-            iPos=pacmanPosition
-            if td in tdMap:
-                return tdMap[td]
-            prob=0.0
-            #iterate over possible offsets from iPos
-            for i in range(1, td):
-                #is the 4 positions offset of initial position by i that are td away
-                allPoss=((iPos[0]+i, iPos[1]+td-i), (iPos[0]-i, iPos[1]+td-i),
-                         (iPos[0]+i, iPos[1]-(td-i)), (iPos[0]-i, iPos[1]-(td-i)))
-                for k in allPoss:
-                    if k in self.legalPositions:
-                        prob+=self.beliefs[k]
-            #need to add in spots directly above, below, left, right
-            maxRange=((iPos[0]+td, iPos[1]), (iPos[0], iPos[1]+td), 
-                      (iPos[0]-td, iPos[1]), (iPos[0], iPos[1]-td))
-            for k in maxRange:
-                if k in self.legalPositions:
-                        prob+=self.beliefs[k]
-            tdMap[td]=prob
-            return prob
+#         def getPofTD(td):
+#             iPos=pacmanPosition
+#             if td in tdMap:
+#                 return tdMap[td]
+#             prob=0.0
+#             #iterate over possible offsets from iPos
+#             for i in range(1, td):
+#                 #is the 4 positions offset of initial position by i that are td away
+#                 allPoss=((iPos[0]+i, iPos[1]+td-i), (iPos[0]-i, iPos[1]+td-i),
+#                          (iPos[0]+i, iPos[1]-(td-i)), (iPos[0]-i, iPos[1]-(td-i)))
+#                 for k in allPoss:
+#                     if k in self.legalPositions:
+#                         prob+=self.beliefs[k]
+#             #need to add in spots directly above, below, left, right
+#             maxRange=((iPos[0]+td, iPos[1]), (iPos[0], iPos[1]+td), 
+#                       (iPos[0]-td, iPos[1]), (iPos[0], iPos[1]-td))
+#             for k in maxRange:
+#                 if k in self.legalPositions:
+#                         prob+=self.beliefs[k]
+#             tdMap[td]=prob
+#             return prob
 
         if deb:
             print "initial belief state"
@@ -190,32 +190,6 @@ class ExactInference(InferenceModule):
         #can get P(noisyDistance | TrueDistance). 
         allPossible = util.Counter()
         #make a copy of beliefs for modification
-        
-        # if noisyDistance==None:
-        #     for p in self.legalPositions:
-        #         allPossible[p]=0
-        #     allPossible[self.getJailPosition()]=1.0
-        # else:
-        #     allPossible+=self.beliefs
-        #     for p in self.legalPositions:
-        #         trueDistance = util.manhattanDistance(p, pacmanPosition)
-        #         if trueDistance==0:
-        #             #no probability of ghost here, bc is current position
-        #             allPossible[p]=0
-        #         elif emissionModel[trueDistance] > 0 and getPofTD(trueDistance)>0:
-        #             #prob of ghost at p given its at td is the prob its at p/the prob its at td.
-        #             probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
-        #             #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
-        #             probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
-        #             if deb:
-        #                 print ""
-        #                 print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
-        #                 print "P(p|td)=", probPgivenTD
-        #                 print "P(nd | td)=", emissionModel[trueDistance]
-        #                 print "P(td|nd)=", probTDgivenND
-        #                 print ""
-        #             #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
-        #             allPossible[p]=probPgivenTD*probTDgivenND
 
         if noisyDistance==None:
             for p in self.legalPositions:
@@ -228,11 +202,11 @@ class ExactInference(InferenceModule):
                 if trueDistance==0:
                     #no probability of ghost here, bc is current position
                     allPossible[p]=0
-                elif emissionModel[trueDistance] > 0 and getPofTD(trueDistance)>0:
+                elif emissionModel[trueDistance]>0:
                     #prob of ghost at p given its at td is the prob its at p/the prob its at td.
-                    probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
+                    #probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
                     #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
-                    probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
+                    #probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
                     if deb:
                         print ""
                         print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
