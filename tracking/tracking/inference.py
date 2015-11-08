@@ -191,35 +191,54 @@ class ExactInference(InferenceModule):
         allPossible = util.Counter()
         #make a copy of beliefs for modification
         
+        # if noisyDistance==None:
+        #     for p in self.legalPositions:
+        #         allPossible[p]=0
+        #     allPossible[self.getJailPosition()]=1.0
+        # else:
+        #     allPossible+=self.beliefs
+        #     for p in self.legalPositions:
+        #         trueDistance = util.manhattanDistance(p, pacmanPosition)
+        #         if trueDistance==0:
+        #             #no probability of ghost here, bc is current position
+        #             allPossible[p]=0
+        #         elif emissionModel[trueDistance] > 0 and getPofTD(trueDistance)>0:
+        #             #prob of ghost at p given its at td is the prob its at p/the prob its at td.
+        #             probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
+        #             #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
+        #             probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
+        #             if deb:
+        #                 print ""
+        #                 print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
+        #                 print "P(p|td)=", probPgivenTD
+        #                 print "P(nd | td)=", emissionModel[trueDistance]
+        #                 print "P(td|nd)=", probTDgivenND
+        #                 print ""
+        #             #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
+        #             allPossible[p]=probPgivenTD*probTDgivenND
+
         if noisyDistance==None:
             for p in self.legalPositions:
                 allPossible[p]=0
             allPossible[self.getJailPosition()]=1.0
         else:
-            allPossible+=self.beliefs
+            #allPossible+=self.beliefs
             for p in self.legalPositions:
                 trueDistance = util.manhattanDistance(p, pacmanPosition)
-                if trueDistance==0:
-                    #no probability of ghost here, bc is current position
-                    allPossible[p]=0
-                elif emissionModel[trueDistance] > 0 and getPofTD(trueDistance)>0:
-                    #prob of ghost at p given its at td is the prob its at p/the prob its at td.
-                    probPgivenTD=self.beliefs[p]/getPofTD(trueDistance)
-                    #prob of true distance given noisy distance is P(nd|td)*P(td)*alpha (which we ignore)
-                    probTDgivenND=emissionModel[trueDistance]*getPofTD(trueDistance)
-                    if deb:
-                        print ""
-                        print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
-                        print "P(p|td)=", probPgivenTD
-                        print "P(nd | td)=", emissionModel[trueDistance]
-                        print "P(td|nd)=", probTDgivenND
-                        print ""
-                    #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
-                    allPossible[p]=probPgivenTD*probTDgivenND
+                if deb:
+                    print ""
+                    print "p=", p, "td=", trueDistance, "P of td=", getPofTD(trueDistance)
+                    print "P(p|td)=", probPgivenTD
+                    print "P(nd | td)=", emissionModel[trueDistance]
+                    print "P(td|nd)=", probTDgivenND
+                    print ""
+                #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
+                allPossible[p] = self.beliefs[p] * emissionModel[trueDistance]
         if deb:
             print "final belief state"
             for p in self.legalPositions:
                 print p, allPossible[p]
+
         
         "*** END YOUR CODE HERE ***"
 
