@@ -215,11 +215,12 @@ class ExactInference(InferenceModule):
                         print "P(td|nd)=", probTDgivenND
                         print ""
                     #set probability of a ghost at p to P(ghost at p | td) * P(td | nd)
-                    allPossible[p]=probPgivenTD*probTDgivenND
-        if deb:
-            print "final belief state"
-            for p in self.legalPositions:
-                print p, allPossible[p]
+                    #allPossible[p]=probPgivenTD*probTDgivenND
+                    allPossible[p]=self.beliefs[p]*emissionModel[trueDistance]
+#         if deb:
+#             print "final belief state"
+#             for p in self.legalPositions:
+#                 print p, allPossible[p]
         
         "*** END YOUR CODE HERE ***"
 
