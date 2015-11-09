@@ -298,11 +298,7 @@ class ExactInference(InferenceModule):
                 newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, pos))
 
                 for position, prob in newPosDist.items():
-                    probAtOldPosition = self.beliefs[pos]
-                    #Pr( ghost is at p at t + 1 | ghost is at oldPos at t ) * Pr(ghost is at oldPos at t)
-                    probAtPosTPlus1 = prob * probAtOldPosition
-                    #print(probAtPosTPlus1)
-                    possiblePositions[position] += probAtPosTPlus1
+                    possiblePositions[position] += prob * self.beliefs[pos]
 
         possiblePositions.normalize()
         self.beliefs = possiblePositions
