@@ -173,12 +173,13 @@ class GreedyBustersAgent(BustersAgent):
         closestPos=None
         for dist in livingGhostPositionDistributions:
             pos=dist.argMax()
+#             print "best guess position=", pos
             distance=self.distancer.getDistance(pacmanPosition, pos)
-            if distance>minDist or minDist == -1:
+            if distance<minDist or minDist == -1: #==-1 iff this is first iteration of loop
                 minDist=distance
                 closestPos=pos
-        # print "current pos=", pacmanPosition
-        # print "Closest pos=", closestPos
+#         print "current pos=", pacmanPosition
+#         print "Closest pos=", closestPos
         
         
         bestAction=None
@@ -190,8 +191,8 @@ class GreedyBustersAgent(BustersAgent):
                 bestAction=action
                 bestDist=newDist
         
-        # print("action=", bestAction)
-        # input() 
+#         print("action=", bestAction)
+#         raw_input() 
 
 #         newPositions=[(Actions.getSuccessor(pacmanPosition, action), action) for action in legal]
 #         _, bestAction = min([(self.distancer.getDistance(nPos, closestPos), action) for nPos, action in newPositions], key= lambda x: x[0])
