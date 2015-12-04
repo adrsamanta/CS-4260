@@ -191,11 +191,12 @@ class RealAgent(CaptureAgent):
 
         else:
             if not TeamData.BlueData:
-                TeamData.BlueData=TeamData(gameState, self.getTeam())
+                TeamData.BlueData=TeamData(gameState, self.getTeam(gameState))
             self.data=TeamData.BlueData
 
         self.legalPositions=self.data.legalPositions
         #set up distribution list that will hold belief distributions for agents
+
 
 
     def _setKnownPosDist(self, agentIndex, knownPos):
@@ -296,6 +297,9 @@ class RealAgent(CaptureAgent):
 
                 #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
                 #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
-                #TODO: FIX THIS SO MOVE INFER ONLY CALLED WHEN IT SHOULD BE
-                self.positionMoveInfer(i)
+                if (self.index-1)%gameState.getNumAgents()==i: #i is the previous agent
+                    if self.index==1 and self.getPreviousObservation()==None: #this is the first move, don't do inference
+                        pass
+                    else:
+                        self.positionMoveInfer(i)
                 self.positionDistanceInfer(i)
