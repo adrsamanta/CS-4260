@@ -172,56 +172,64 @@ class RealAgent(CaptureAgent):
                 if p not in self.mDistribs[i]:
                     self.mDistribs[i][p]=0.0
 
+    def _setKnownPosDist(self, agentIndex, knownPos):
+        dist=self.mDistribs[agentIndex]
+        for pos, _ in dist:
+            if pos!=knownPos:
+                dist[pos]=0
+            else:
+                dist[pos]=1.0
+
     #does inference based on noisy distance to agents and updates opponents distributions
-    def positionDistanceInfer(self):
-        gameState=self.getCurrentObservation()
-        myState=gameState.getAgentState(self.index)
+    def positionDistanceInfer(self, agentIndex, gameState=None):
+        if not gameState:
+            gameState=self.getCurrentObservation()
+        #myState=gameState.getAgentState(self.index)
 
         # noisyDistance = observation
         # emissionModel = busters.getObservationDistribution(noisyDistance)
-        myPos = myState.getPosition()
-
-        for i in self.getOpponents(gameState):
-            noisyDistance = gameState.getAgentDistances()[i]
-            beliefs=self.mDistribs[i]
-            allPossible = util.Counter()
+        myPos = gameState.getAgentPosition()
 
 
-            for p in self.legalPositions:
-                trueDistance = util.manhattanDistance(p, myPos)
-                if beliefs[p]==0:
-                    #don't need to do anything
-                    pass
-                elif trueDistance==0:
-                    #no probability of ghost here, bc is current position
-                    allPossible[p]=0
-                #NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
-                #for p should be updated with that in mind, so this check is silly.
-                #elif gameState.getDistanceProb(trueDistance, noisyDistance)>0: #only do anything if there is any possibility of getting the given noisy distance from this true distance
-                else:
-                    allPossible[p]=beliefs[p]*gameState.getDistanceProb(trueDistance, noisyDistance)
+        noisyDistance = gameState.getAgentDistances()[agentIndex]
+        beliefs=self.mDistribs[agentIndex]
+        allPossible = util.Counter()
 
-            allPossible.normalize()
-            self.mDistribs[i]=allPossible
+
+        for p in self.legalPositions:
+            trueDistance = util.manhattanDistance(p, myPos)
+            if beliefs[p]==0:
+                #don't need to do anything
+                pass
+            elif trueDistance==0:
+                #no probability of ghost here, bc is current position
+                allPossible[p]=0
+            #NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
+            #for p should be updated with that in mind, so this check is silly.
+            #elif gameState.getDistanceProb(trueDistance, noisyDistance)>0: #only do anything if there is any possibility of getting the given noisy distance from this true distance
+            else:
+                allPossible[p]=beliefs[p]*gameState.getDistanceProb(trueDistance, noisyDistance)
+
+        allPossible.normalize()
+        self.mDistribs[agentIndex]=allPossible
 
     #does inference based on where the agent could move to and updates opponents distributions
-    def positionMoveInfer(self):
-        gameState=self.getCurrentObservation()
-        myState=gameState.getAgentState(self.index)
-        myPos = myState.getPosition()
+    def positionMoveInfer(self, agentIndex, gameState=None):
+        if not gameState:
+            gameState=self.getCurrentObservation()
+        #myState=gameState.getAgentState(self.index)
+        myPos = gameState.getAgentPosition(self.index)
 
+        possiblePositions = util.Counter()
+        beliefs=self.mDistribs[agentIndex]
+        for pos in self.legalPositions:
+            if beliefs[pos] > 0:
+                newPosDist = self.getPositionDistribution(agentIndex, pos)
+                for position, prob in newPosDist.items():
+                    possiblePositions[position] += prob * beliefs[pos]
 
-        for i in self.getOpponents(gameState):
-            possiblePositions = util.Counter()
-            beliefs=self.mDistribs[i]
-            for pos in self.legalPositions:
-                if beliefs[pos] > 0:
-                    newPosDist = self.getPositionDistribution(i, pos)
-                    for position, prob in newPosDist.items():
-                        possiblePositions[position] += prob * beliefs[pos]
-
-            possiblePositions.normalize()
-            self.mDistribs[i]=possiblePositions
+        possiblePositions.normalize()
+        self.mDistribs[agentIndex]=possiblePositions
 
     #returns a probability distribution for the agents subsequent position, given that it is at curPos
     def getPositionDistribution(self, agentIndex, curPos):
@@ -234,3 +242,13 @@ class RealAgent(CaptureAgent):
 
         return probs
 
+    #checks if we can see either of the opponents, if so, updates their belief state and doesn't do inference
+    #if not, does inference
+    def updatePosDist(self):
+        gameState=self.getCurrentObservation()
+        for i in self.getOpponents(gameState):
+            if gameState.getAgentPosition(i): #can observe the given agent
+                self._setKnownPosDist(i, gameState.getAgentPosition(i))
+            else:
+                self.positionDistanceInfer(i)
+                self.positionMoveInfer(i)
