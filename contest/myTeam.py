@@ -148,9 +148,9 @@ class TeamData:
             else:
                 self.mDistribs[i]=None
         #should be all legal positions
-        self.legalPositions = gameState.data.layout.walls.asList(key = False) #NEEDS TO BE CHECKED
+        self.legalPositions = gameState.data.layout.walls.asList(key = False) #TODO: NEEDS TO BE CHECKED
         #initialize belief distribution to be 0
-        for p in self.legalPositions: #NEEDS TO BE CHECKED
+        for p in self.legalPositions: #TODO: NEEDS TO BE CHECKED (also is this necessary)
             for i in opps:
                 if p not in self.mDistribs[i]:
                     self.mDistribs[i][p]=0.0
@@ -255,18 +255,20 @@ class RealAgent(CaptureAgent):
         if not gameState:
             gameState=self.getCurrentObservation()
         #myState=gameState.getAgentState(self.index)
-
+        myPos=gameState.getAgentPosition(self.index)
 
         possiblePositions = util.Counter()
         beliefs= self.getmDistribs(agentIndex)
         for pos in self.legalPositions:
-            if beliefs[pos] > 0:
+            #if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
+            if beliefs[pos] > 0 and util.manhattanDistance(myPos, pos)>SIGHT_RANGE:
                 newPosDist = self.getPositionDistribution(agentIndex, pos, gameState)
                 for position, prob in newPosDist.items():
                     possiblePositions[position] += prob * beliefs[pos]
 
         possiblePositions.normalize()
-        self.mDistribs[agentIndex]=possiblePositions
+        self.setDistrib(agentIndex, possiblePositions)
+
 
     #returns a probability distribution for the agents subsequent position, given that it is at curPos
     def getPositionDistribution(self, agentIndex, curPos, gameState=None):
@@ -293,7 +295,6 @@ class RealAgent(CaptureAgent):
             else:
                 #Call move infer first, because need to calculate how agent moved on its last turn. then can update based
                 #on observation.
-                #Potential Problem: this hits the positions within 5 of each agent because they haven't been zeroed yet.
 
                 #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
                 #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
