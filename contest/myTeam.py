@@ -154,12 +154,13 @@ class TeamData:
             for i in opps:
                 if p not in self.mDistribs[i]:
                     self.mDistribs[i][p]=0.0
+        self.defendFoodGrid=[]
 
 
+    def logFood(self, gameState):
+        self.defendFoodGrid.append(self.team[0].getFoodYouAreDefending(gameState))
 
-
-#TODO: FLESH OUT ABOVE CLASS, SHOULD HOLD DATA THAT IS COMMON TO THE TEAM, IS STUPID TO BE KEEPING IT IN BOTH
-
+#TODO: scared timer stuff in agent states, look at line 573 in capture
 class RealAgent(CaptureAgent):
     def registerInitialState(self, gameState):
         """
@@ -181,6 +182,7 @@ class RealAgent(CaptureAgent):
         CaptureAgent.registerInitialState in captureAgents.py.
         '''
         #TODO: figure out how to avoid doing mazeDistances for both agents
+        #TODO: Look into stealing mazeDistances from other team if possible
         CaptureAgent.registerInitialState(self, gameState)
 
         #set up data repository
@@ -209,6 +211,9 @@ class RealAgent(CaptureAgent):
 
     def _capturedAgent(self, agentIndex):
         self._setKnownPosDist(agentIndex, self.getCurrentObservation().getInitialPosition(agentIndex))
+
+    def getPrevPlayer(self):
+        return (self.index-1)%self.getCurrentObservation().getNumAgents()
 
     #if this causes a significant slowdown, can just add mDistribs attribute to this class, initialize as ref to data
     def getmDistribs(self, agentIndex):
@@ -284,6 +289,23 @@ class RealAgent(CaptureAgent):
 
         return probs
 
+    #compares the most recent food log to the one before it, looking for any food that disappeared
+    def checkFood(self):
+        prevFood=self.data.defendFoodGrid[-2]
+        currFood=self.data.defendFoodGrid[-1]
+        halfway = currFood.width / 2
+        if self.red:
+            xrange = range(halfway)
+        else:
+            xrange = range(halfway, currFood.width)
+
+        for y in range(currFood.height):
+            for x in xrange:
+                if prevFood[x][y] and not currFood[x][y]:
+                    #food has been eaten in the past move
+                    self._setKnownPosDist(self.getPrevPlayer(), (x,y))
+                    break
+
     #checks if we can see either of the opponents, if so, updates their belief state and doesn't do inference
     #if not, does inference
     def updatePosDist(self, gameState=None):
@@ -292,15 +314,19 @@ class RealAgent(CaptureAgent):
         for i in self.getOpponents(gameState):
             if gameState.getAgentPosition(i): #can observe the given agent
                 self._setKnownPosDist(i, gameState.getAgentPosition(i))
+
             else:
                 #Call move infer first, because need to calculate how agent moved on its last turn. then can update based
                 #on observation.
 
                 #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
                 #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
-                if (self.index-1)%gameState.getNumAgents()==i: #i is the previous agent
+                if self.getPrevPlayer()==i: #i is the previous agent
                     if self.index==1 and self.getPreviousObservation()==None: #this is the first move, don't do inference
                         pass
                     else:
                         self.positionMoveInfer(i)
                 self.positionDistanceInfer(i)
+
+    def chooseAction(self, gameState):
+        self.data.logFood(gameState)
