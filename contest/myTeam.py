@@ -165,9 +165,9 @@ class RealAgent(CaptureAgent):
             else:
                 self.mDistribs[i]=None
         #should be all legal positions
-        self.legalPositions = gameState.data.layout.walls.asList(key = False)
+        self.legalPositions = gameState.data.layout.walls.asList(key = False) #NEEDS TO BE CHECKED
         #initialize belief distribution to be 0
-        for p in self.legalPositions:
+        for p in self.legalPositions: #NEEDS TO BE CHECKED
             for i in opps:
                 if p not in self.mDistribs[i]:
                     self.mDistribs[i][p]=0.0
@@ -195,8 +195,12 @@ class RealAgent(CaptureAgent):
                 elif trueDistance==0:
                     #no probability of ghost here, bc is current position
                     allPossible[p]=0
-                elif gameState.getDistanceProb(trueDistance, noisyDistance)>0: #only do anything if there is any possibility of getting the given noisy distance from this true distance
+                #NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
+                #for p should be updated with that in mind, so this check is silly.
+                #elif gameState.getDistanceProb(trueDistance, noisyDistance)>0: #only do anything if there is any possibility of getting the given noisy distance from this true distance
+                else:
                     allPossible[p]=beliefs[p]*gameState.getDistanceProb(trueDistance, noisyDistance)
+
             allPossible.normalize()
             self.mDistribs[i]=allPossible
 
