@@ -281,11 +281,23 @@ class RealAgent(CaptureAgent):
             gameState=self.getCurrentObservation()
         neighbors = game.Actions.getLegalNeighbors(curPos, gameState.getWalls())
         probs={}
+        #currently assumes agressively moves towards closest "objective" (food or pacman) with probability .8
+        objectives=self.data.defendFoodGrid[-1].asList()
+        for i in self.getTeam(gameState):
+            if gameState.getAgentState(i).isPacman:
+                objectives.append(gameState.getAgentPosition(i))
+
+        minDist=self.getMazeDistance(neighbors[0], objectives[0])
+        bestNeighbor=neighbors[0]
+        for obj in objectives:
+            for neighbor in neighbors:
+                if self.getMazeDistance(obj, neighbor)<minDist:
+                    bestNeighbor=neighbor
+        defProb=.8
+        otherProbs=(1-defProb)/(len(neighbors)-1)
         for n in neighbors:
-            probs[n]=1/len(neighbors)
-        #Currently VERY dumb impl, assumes agent moves randomly
-        # for action in actions:
-        #     probs[game.Actions.getSuccessor(curPos, action)]=1/len(actions)
+            probs[neighbor]=otherProbs
+        probs[bestNeighbor]=defProb
 
         return probs
 
