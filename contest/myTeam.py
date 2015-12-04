@@ -16,7 +16,7 @@ from captureAgents import CaptureAgent
 import random, time, util
 from game import Directions
 import game
-
+from capture import GameState, SIGHT_RANGE
 
 #################
 # Team creation #
@@ -132,6 +132,34 @@ class TestAgent(CaptureAgent):
         return random.choice(actions)
 
 
+class TeamData:
+    RedData=None
+    BlueData=None
+    def __init__(self, gameState, team):
+        self.team=team
+        self.mDistribs=[]
+        opps=self.team[0].getOpponents(gameState)
+        for i in range(gameState.getNumAgents()):
+            if i in opps:
+                dist=util.Counter()
+                oppPos=gameState.getInitialAgentPosition(i)
+                dist[oppPos]=1.0
+                self.mDistribs[i]=dist
+            else:
+                self.mDistribs[i]=None
+        #should be all legal positions
+        self.legalPositions = gameState.data.layout.walls.asList(key = False) #NEEDS TO BE CHECKED
+        #initialize belief distribution to be 0
+        for p in self.legalPositions: #NEEDS TO BE CHECKED
+            for i in opps:
+                if p not in self.mDistribs[i]:
+                    self.mDistribs[i][p]=0.0
+
+
+
+
+#TODO: FLESH OUT ABOVE CLASS, SHOULD HOLD DATA THAT IS COMMON TO THE TEAM, IS STUPID TO BE KEEPING IT IN BOTH
+
 class RealAgent(CaptureAgent):
     def registerInitialState(self, gameState):
         """
@@ -152,33 +180,41 @@ class RealAgent(CaptureAgent):
         on initialization time, please take a look at
         CaptureAgent.registerInitialState in captureAgents.py.
         '''
+        #TODO: figure out how to avoid doing mazeDistances for both agents
         CaptureAgent.registerInitialState(self, gameState)
+
+        #set up data repository
+        if self.red:
+            if not TeamData.RedData:
+                TeamData.RedData=TeamData(gameState, self.getTeam(gameState))
+            self.data=TeamData.RedData
+
+        else:
+            if not TeamData.BlueData:
+                TeamData.BlueData=TeamData(gameState, self.getTeam())
+            self.data=TeamData.BlueData
+
+        self.legalPositions=self.data.legalPositions
         #set up distribution list that will hold belief distributions for agents
-        self.mDistribs=[]
-        opps=self.getOpponents(gameState)
-        for i in range(gameState.getNumAgents()):
-            if i in opps:
-                dist=util.Counter()
-                oppPos=gameState.getInitialAgentPosition(i)
-                dist[oppPos]=1.0
-                self.mDistribs[i]=dist
-            else:
-                self.mDistribs[i]=None
-        #should be all legal positions
-        self.legalPositions = gameState.data.layout.walls.asList(key = False) #NEEDS TO BE CHECKED
-        #initialize belief distribution to be 0
-        for p in self.legalPositions: #NEEDS TO BE CHECKED
-            for i in opps:
-                if p not in self.mDistribs[i]:
-                    self.mDistribs[i][p]=0.0
+
 
     def _setKnownPosDist(self, agentIndex, knownPos):
-        dist=self.mDistribs[agentIndex]
+        dist=self.getmDistribs(agentIndex)
         for pos, _ in dist:
             if pos!=knownPos:
                 dist[pos]=0
             else:
                 dist[pos]=1.0
+
+    def _capturedAgent(self, agentIndex):
+        self._setKnownPosDist(agentIndex, self.getCurrentObservation().getInitialPosition(agentIndex))
+
+    #if this causes a significant slowdown, can just add mDistribs attribute to this class, initialize as ref to data
+    def getmDistribs(self, agentIndex):
+        return self.data.mDistribs[agentIndex]
+
+    def setDistrib(self, agentIndex, newDistrib):
+        self.data.mDistribs[agentIndex]=newDistrib
 
     #does inference based on noisy distance to agents and updates opponents distributions
     def positionDistanceInfer(self, agentIndex, gameState=None):
@@ -192,7 +228,7 @@ class RealAgent(CaptureAgent):
 
 
         noisyDistance = gameState.getAgentDistances()[agentIndex]
-        beliefs=self.mDistribs[agentIndex]
+        beliefs= self.getmDistribs(agentIndex)
         allPossible = util.Counter()
 
 
@@ -201,8 +237,8 @@ class RealAgent(CaptureAgent):
             if beliefs[p]==0:
                 #don't need to do anything
                 pass
-            elif trueDistance==0:
-                #no probability of ghost here, bc is current position
+            elif trueDistance<=SIGHT_RANGE:
+                #agent would be visible if it were here, so its not here
                 allPossible[p]=0
             #NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
             #for p should be updated with that in mind, so this check is silly.
@@ -211,20 +247,20 @@ class RealAgent(CaptureAgent):
                 allPossible[p]=beliefs[p]*gameState.getDistanceProb(trueDistance, noisyDistance)
 
         allPossible.normalize()
-        self.mDistribs[agentIndex]=allPossible
+        self.setDistrib(agentIndex, allPossible)
 
     #does inference based on where the agent could move to and updates opponents distributions
     def positionMoveInfer(self, agentIndex, gameState=None):
         if not gameState:
             gameState=self.getCurrentObservation()
         #myState=gameState.getAgentState(self.index)
-        myPos = gameState.getAgentPosition(self.index)
+
 
         possiblePositions = util.Counter()
-        beliefs=self.mDistribs[agentIndex]
+        beliefs= self.getmDistribs(agentIndex)
         for pos in self.legalPositions:
             if beliefs[pos] > 0:
-                newPosDist = self.getPositionDistribution(agentIndex, pos)
+                newPosDist = self.getPositionDistribution(agentIndex, pos, gameState)
                 for position, prob in newPosDist.items():
                     possiblePositions[position] += prob * beliefs[pos]
 
@@ -232,23 +268,34 @@ class RealAgent(CaptureAgent):
         self.mDistribs[agentIndex]=possiblePositions
 
     #returns a probability distribution for the agents subsequent position, given that it is at curPos
-    def getPositionDistribution(self, agentIndex, curPos):
-
-        actions=self.getCurrentObservation().getLegalActions(agentIndex)
+    def getPositionDistribution(self, agentIndex, curPos, gameState=None):
+        if not gameState:
+            gameState=self.getCurrentObservation()
+        neighbors = game.Actions.getLegalNeighbors(curPos, gameState.getWalls())
         probs={}
+        for n in neighbors:
+            probs[n]=1/len(neighbors)
         #Currently VERY dumb impl, assumes agent moves randomly
-        for action in actions:
-            probs[game.Actions.getSuccessor(curPos, action)]=1/len(actions)
+        # for action in actions:
+        #     probs[game.Actions.getSuccessor(curPos, action)]=1/len(actions)
 
         return probs
 
     #checks if we can see either of the opponents, if so, updates their belief state and doesn't do inference
     #if not, does inference
-    def updatePosDist(self):
-        gameState=self.getCurrentObservation()
+    def updatePosDist(self, gameState=None):
+        if not gameState:
+            gameState=self.getCurrentObservation()
         for i in self.getOpponents(gameState):
             if gameState.getAgentPosition(i): #can observe the given agent
                 self._setKnownPosDist(i, gameState.getAgentPosition(i))
             else:
-                self.positionDistanceInfer(i)
+                #Call move infer first, because need to calculate how agent moved on its last turn. then can update based
+                #on observation.
+                #Potential Problem: this hits the positions within 5 of each agent because they haven't been zeroed yet.
+
+                #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
+                #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
+                #TODO: FIX THIS SO MOVE INFER ONLY CALLED WHEN IT SHOULD BE
                 self.positionMoveInfer(i)
+                self.positionDistanceInfer(i)
