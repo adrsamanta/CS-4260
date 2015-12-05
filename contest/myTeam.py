@@ -223,7 +223,7 @@ class RealAgent(CaptureAgent):
         start_time = time.time()
         debug = True
         #way to keep track of best action so far????
-        bestActionSequence = [gameState.getLegalActions()]
+        bestActionSequence = [gameState.getLegalActions(self.index)]
         bestActionSequenceUtility = None
         #make sure this does a deep copy
         enemy_belief_states = list(self.data.mDistribs)
@@ -234,7 +234,7 @@ class RealAgent(CaptureAgent):
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state = toVisit.pop()
 
-            for next_action in curr_state.gameState.getLegalActions():
+            for next_action in curr_state.gameState.getLegalActions(self.index):
                 next_game_state = curr_state.gameState.generateSuccessor(curr_state.agentIndex, next_action)
 
                 if debug:
@@ -279,7 +279,7 @@ class RealAgent(CaptureAgent):
         utility = 0
         for feature, feature_value in features.items():
             if isinstance(feature_value,list):
-                for i in len(feature_value):
+                for i in range(len(feature_value)):
                     utility += feature_value[i] * weights[feature][i]
             else:
                 utility += feature_value * weights[feature]
