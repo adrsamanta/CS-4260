@@ -316,7 +316,7 @@ class RealAgent(CaptureAgent):
                 if prevFood[x][y] and not currFood[x][y]:
                     #food has been eaten in the past move
                     self._setKnownPosDist(self.getPrevPlayer(), (x,y))
-                    break
+                    return True
 
     #checks if we can see either of the opponents, if so, updates their belief state and doesn't do inference
     #if not, does inference
@@ -326,19 +326,18 @@ class RealAgent(CaptureAgent):
         for i in self.getOpponents(gameState):
             if gameState.getAgentPosition(i): #can observe the given agent
                 self._setKnownPosDist(i, gameState.getAgentPosition(i))
-
-            else:
-                #Call move infer first, because need to calculate how agent moved on its last turn. then can update based
-                #on observation.
-
-                #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
-                #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
-                if self.getPrevPlayer()==i: #i is the previous agent
-                    if self.index==1 and self.getPreviousObservation()==None: #this is the first move, don't do inference
-                        pass
-                    else:
+            #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
+            #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
+            elif self.getPrevPlayer()==i: #i is the previous agent
+                if self.index==0 and self.getPreviousObservation()==None: #this is the first move, don't do inference
+                    pass
+                else:
+                    if not self.checkFood():
                         self.positionMoveInfer(i)
+                        self.positionDistanceInfer(i)
+            else:
                 self.positionDistanceInfer(i)
 
     def chooseAction(self, gameState):
         self.data.logFood(gameState)
+        self.updatePosDist(gameState)
