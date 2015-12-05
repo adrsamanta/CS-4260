@@ -100,8 +100,9 @@ class DummyAgent(CaptureAgent):
 class TeamData:
     RedData=None
     BlueData=None
-    def __init__(self, gameState, team, opps):
+    def __init__(self, gameState, team, opps, agent):
         self.team=team
+        self.mAgent=agent
         self.mDistribs=[None]*gameState.getNumAgents()
         #opps=self.team[0].getOpponents(gameState)
         for i in range(gameState.getNumAgents()):
@@ -114,16 +115,11 @@ class TeamData:
                 self.mDistribs[i]=None
         #should be all legal positions
         self.legalPositions = gameState.data.layout.walls.asList(key = False) #TODO: NEEDS TO BE CHECKED
-        #initialize belief distribution to be 0
-        for p in self.legalPositions: #TODO: NEEDS TO BE CHECKED (also is this necessary)
-            for i in opps:
-                if p not in self.mDistribs[i]:
-                    self.mDistribs[i][p]=0.0
         self.defendFoodGrid=[]
 
 
     def logFood(self, gameState):
-        self.defendFoodGrid.append(self.team[0].getFoodYouAreDefending(gameState))
+        self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
 
 #TODO: scared timer stuff in agent states, look at line 573 in capture
 class RealAgent(CaptureAgent):
@@ -152,12 +148,12 @@ class RealAgent(CaptureAgent):
         #set up data repository
         if self.red:
             if not TeamData.RedData:
-                TeamData.RedData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState))
+                TeamData.RedData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState), self)
             self.data=TeamData.RedData
 
         else:
             if not TeamData.BlueData:
-                TeamData.BlueData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState))
+                TeamData.BlueData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState), self)
             self.data=TeamData.BlueData
 
         self.legalPositions=self.data.legalPositions
@@ -180,8 +176,11 @@ class RealAgent(CaptureAgent):
         '''
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
+        self.displayDistributionsOverPositions(self.data.mDistribs)
         #return self.actionSearch(self.index, gameState)
-        return random.choice(gameState.getLegalActions(self.index))
+        # return random.choice(gameState.getLegalActions(self.index))
+        return self.offensiveReflex(gameState)
+
 
     def actionSearch(self, agentIndex, gameState):
         ##do a breadth first search until time runs out
@@ -253,11 +252,8 @@ class RealAgent(CaptureAgent):
 
     def _setKnownPosDist(self, agentIndex, knownPos):
         dist=self.getmDistribs(agentIndex)
-        for pos, _ in dist:
-            if pos!=knownPos:
-                dist[pos]=0
-            else:
-                dist[pos]=1.0
+        dist.clear()
+        dist[knownPos]=1.0
 
     def _capturedAgent(self, agentIndex):
         self._setKnownPosDist(agentIndex, self.getCurrentObservation().getInitialPosition(agentIndex))
@@ -280,7 +276,7 @@ class RealAgent(CaptureAgent):
 
         # noisyDistance = observation
         # emissionModel = busters.getObservationDistribution(noisyDistance)
-        myPos = gameState.getAgentPosition()
+        myPos = gameState.getAgentPosition(self.index)
 
 
         noisyDistance = gameState.getAgentDistances()[agentIndex]
@@ -355,6 +351,8 @@ class RealAgent(CaptureAgent):
 
     #compares the most recent food log to the one before it, looking for any food that disappeared
     def checkFood(self):
+        if len(self.data.defendFoodGrid) < 2:
+            return False
         prevFood=self.data.defendFoodGrid[-2]
         currFood=self.data.defendFoodGrid[-1]
         halfway = currFood.width / 2
