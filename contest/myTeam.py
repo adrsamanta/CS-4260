@@ -103,6 +103,7 @@ class TeamData:
     def __init__(self, gameState, team, opps, agent):
         self.team=team
         self.mAgent=agent
+        self.offensive = True
         self.mDistribs=[None]*gameState.getNumAgents()
         #opps=self.team[0].getOpponents(gameState)
         for i in range(gameState.getNumAgents()):
@@ -137,6 +138,10 @@ class TeamData:
 
     def logFood(self, gameState):
         self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
+
+    def getOffensive(self):
+        self.offensive = not self.offensive
+        return self.offensive
 
 #TODO: scared timer stuff in agent states, look at line 573 in capture
 class RealAgent(CaptureAgent):
@@ -174,6 +179,7 @@ class RealAgent(CaptureAgent):
             self.data=TeamData.BlueData
 
         self.legalPositions=self.data.legalPositions
+        self.offensive = self.data.getOffensive()
         #set up distribution list that will hold belief distributions for agents
 
     def chooseAction(self, gameState):
@@ -197,7 +203,7 @@ class RealAgent(CaptureAgent):
         self.updatePosDist(gameState)
         #print "infer time: ", time.time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-        #return self.actionSearch(self.index, gameState)
+        return self.actionSearch(self.index, gameState)
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
 
@@ -215,7 +221,7 @@ class RealAgent(CaptureAgent):
         lowerBound = -1
         #start time so we can terminate before 1 second time limit
         start_time = time.time()
-        debug = False
+        debug = True
         #way to keep track of best action so far????
         bestActionSequence = [gameState.getLegalActions()]
         bestActionSequenceUtility = None
@@ -267,7 +273,35 @@ class RealAgent(CaptureAgent):
 
 
     def Utility(self, gameState):
-        return 0
+
+        features = self.getFeatures(gameState)
+        weights = self.getWeights(features, gameState)
+        utility = 0
+        for feature, feature_value in features.items():
+            if isinstance(feature_value,list):
+                for i in len(feature_value):
+                    utility += feature_value[i] * weights[feature][i]
+            else:
+                utility += feature_value * weights[feature]
+
+        return utility
+
+    #weight on a -5 to 5 scale
+    def getWeights(self, features, gameState):
+        weights = util.Counter()
+        weights["foodDist"] = 3 if self.offensive else 2
+        weights["numEnemyPacmen"] = 0
+        weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
+        weights["numEnemyGhost"] = 0
+        weights["distToEnemyGhosts"] = -4 if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else 1
+        weights["score"] = .5
+        weights["movesRemaing"] = 0
+        weights["scaredMovesRemaining"] = 0
+        weights["foodEatenBySelf"] = 0
+        weights["enemyPacmanFood"] = 0
+        weights["distToHome"] = max(features["foodEatenBySelf"]/-4, -5) if features["distToHome"] < features["movesRemaing"] else -5 #Tweak value later
+
+
 
     def getFeatures(self, gameState):
         features=util.Counter()
@@ -304,6 +338,7 @@ class RealAgent(CaptureAgent):
 
         features["distToNearestCapsule"]=self.getDistToNearestCapsule(gameState)
         features["scaredMovesRemaining"]=self.getScaredMovesRemaining(gameState)
+        features["scaredEnemyMovesRemaining"] = self.getEnemyAgentScaredMovesRemaining(gameState)
         features["foodEatenBySelf"]=self.getFoodEatenBySelf(gameState)
         features["enemyPacmanFood"]=[]
         for i, _ in features["distToEnemyPacman"]:
@@ -319,14 +354,17 @@ class RealAgent(CaptureAgent):
             return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getBlueCapsules()])
 
     def getScaredMovesRemaining(self, gameState):
-        return gameState.data.getAgentState(self.index).scaredTimer
+        return gameState.getAgentState(self.index).scaredTimer
+
+    def getEnemyAgentScaredMovesRemaining(self, gameState):
+        return gameState.getAgentState(self.getOpponents(gameState)[0]).scaredTimer
 
     def getFoodEatenByEnemyAgent(self, gameState, agentIndex):
-        return gameState.data.getAgentState(agentIndex).numCarrying
+        return gameState.getAgentState(agentIndex).numCarrying
 
     #food in our stomach
     def getFoodEatenBySelf(self, gameState):
-        return gameState.data.getAgentState(self.index).numCarrying
+        return gameState.getAgentState(self.index).numCarrying
 
     #gain of going to home side
 
@@ -348,10 +386,6 @@ class RealAgent(CaptureAgent):
                    for pos, prob in self.getmDistribs(enemyIndex) if prob>=.5]
             return sum(dists)/len(dists)
 
-
-
-    def getWeights(self, gameState):
-        pass
 
     def _setKnownPosDist(self, agentIndex, knownPos):
         self.knownEnemies[agentIndex]=knownPos
