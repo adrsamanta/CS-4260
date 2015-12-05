@@ -120,6 +120,7 @@ class TeamData:
         self.borderPositions=[(halfway, y) for y in range(agent.getFood(gameState).height) if not gameState.hasWall(halfway, y)]
 
         self.borderDistances={}
+        self.calcBorderDistances(gameState)
 
     def calcBorderDistances(self, gameState):
         grid = gameState.getWalls()
