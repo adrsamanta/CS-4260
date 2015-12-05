@@ -525,3 +525,86 @@ class RealAgent(CaptureAgent):
     #     return {'successorScore': 100, 'distanceToFood': -1}
     #
     # ############END OFFENSIVE REFLEX CODE#################
+    def offensiveReflex(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        values = [self.evaluate(gameState, a) for a in actions]
+        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+
+        maxValue = max(values)
+        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+
+        foodLeft = len(self.getFood(gameState).asList())
+
+        if foodLeft <= 2:
+          bestDist = 9999
+          for action in actions:
+            successor = self.getSuccessor(gameState, action)
+            pos2 = successor.getAgentPosition(self.index)
+            dist = self.getMazeDistance(self.start,pos2)
+            if dist < bestDist:
+              bestAction = action
+              bestDist = dist
+          return bestAction
+
+        return random.choice(bestActions)
+
+    def getSuccessor(self, gameState, action):
+        """
+        Finds the next successor which is a grid position (location tuple).
+        """
+        successor = gameState.generateSuccessor(self.index, action)
+        pos = successor.getAgentState(self.index).getPosition()
+        if pos != util.nearestPoint(pos):
+          # Only half a grid position was covered
+          return successor.generateSuccessor(self.index, action)
+        else:
+          return successor
+
+    def getDistToNearestCapsule(self, gameState):
+        if gameState.isOnRedTeam(self.index):
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getRedCapsules()])
+        else:
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getBlueCapsules()])
+
+    def getScaredMovesRemaining(self, gameState):
+        return gameState.data.getAgentState(self.index).scaredTimer
+
+    def getFoodEatenByEnemyAgent(self, gameState, agentIndex):
+        return gameState.data.getAgentState(agentIndex).numCarrying
+
+    #food in our stomach
+    def getFoodEatenBySelf(self, gameState):
+        return gameState.data.getAgentState(self.index).numCarrying
+
+    #gain of going to home side
+
+    def getDistanceToHomeSide(self, gameState):
+        halfway = self.getFood(gameState).width / 2
+        return gameState.getAgentPosition(self.index)[0] - halfway
+
+    def evaluate(self, gameState, action):
+        """
+        Computes a linear combination of features and feature weights
+        """
+        features = self.getFeatures(gameState, action)
+        weights = self.getWeights(gameState, action)
+        return features * weights
+
+    def getFeatures(self, gameState, action):
+        features = util.Counter()
+        successor = self.getSuccessor(gameState, action)
+        foodList = self.getFood(successor).asList()
+        features['successorScore'] = -len(foodList)#self.getScore(successor)
+
+        # Compute distance to the nearest food
+
+        if len(foodList) > 0: # This should always be True,  but better safe than sorry
+          myPos = successor.getAgentState(self.index).getPosition()
+          minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+          features['distanceToFood'] = minDistance
+        return features
+
+    def getWeights(self, gameState, action):
+        return {'successorScore': 100, 'distanceToFood': -1}
+
+    ############END OFFENSIVE REFLEX CODE#################
