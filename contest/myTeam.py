@@ -283,7 +283,7 @@ class RealAgent(CaptureAgent):
                     features["distToEnemyGhost"]=min(self.getDistanceToEnemy(gameState, i), features["distToEnemyGhost"])
 
         features["score"]=self.getScore(gameState)
-
+        features["movesRemaining"]=gameState.data.timeleft
 
         pass
 
