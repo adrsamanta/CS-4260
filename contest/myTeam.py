@@ -18,7 +18,7 @@ from game import Directions
 import game
 from capture import GameState, SIGHT_RANGE
 from collections import namedtuple
-from time import time
+import time
 
 #################
 # Team creation #
@@ -174,13 +174,14 @@ class RealAgent(CaptureAgent):
         '''
         You should change this in your own agent.
         '''
+        #startTime=time.time()
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
+        #print "infer time: ", time.time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
         #return self.actionSearch(self.index, gameState)
         # return random.choice(gameState.getLegalActions(self.index))
-        return self.offensiveReflex(gameState)
-
+        #return self.offensiveReflex(gameState)
 
     def actionSearch(self, agentIndex, gameState):
         ##do a breadth first search until time runs out
@@ -195,7 +196,7 @@ class RealAgent(CaptureAgent):
         upperBound = 999
         lowerBound = -1
         #start time so we can terminate before 1 second time limit
-        start_time = time()
+        start_time = time.time()
         debug = False
         #way to keep track of best action so far????
         bestActionSequence = [gameState.getLegalActions()]
@@ -206,7 +207,7 @@ class RealAgent(CaptureAgent):
         State = namedtuple('State', 'agentIndex actions visitedInActionSequence gameState enemy_belief_states utility')
         toVisit.push(State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0))
         #using a constant of .75 seconds for now
-        while time() - start_time < .75 and not toVisit.isEmpty():
+        while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state = toVisit.pop()
 
             for next_action in curr_state.gameState.getLegalActions():
@@ -390,3 +391,68 @@ class RealAgent(CaptureAgent):
             else:
                 #do inference based on distance
                 self.positionDistanceInfer(i)
+
+
+
+    ###### BEGIN OFFENSIVE CODE ##########
+    def offensiveReflex(self, gameState):
+        actions = gameState.getLegalActions(self.index)
+        values = [self.evaluate(gameState, a) for a in actions]
+        # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+
+        maxValue = max(values)
+        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+
+        foodLeft = len(self.getFood(gameState).asList())
+
+        if foodLeft <= 2:
+          bestDist = 9999
+          for action in actions:
+            successor = self.getSuccessor(gameState, action)
+            pos2 = successor.getAgentPosition(self.index)
+            dist = self.getMazeDistance(self.start,pos2)
+            if dist < bestDist:
+              bestAction = action
+              bestDist = dist
+          return bestAction
+
+        return random.choice(bestActions)
+
+    def getSuccessor(self, gameState, action):
+        """
+        Finds the next successor which is a grid position (location tuple).
+        """
+        successor = gameState.generateSuccessor(self.index, action)
+        pos = successor.getAgentState(self.index).getPosition()
+        if pos != util.nearestPoint(pos):
+          # Only half a grid position was covered
+          return successor.generateSuccessor(self.index, action)
+        else:
+          return successor
+
+    def evaluate(self, gameState, action):
+        """
+        Computes a linear combination of features and feature weights
+        """
+        features = self.getFeatures(gameState, action)
+        weights = self.getWeights(gameState, action)
+        return features * weights
+
+    def getFeatures(self, gameState, action):
+        features = util.Counter()
+        successor = self.getSuccessor(gameState, action)
+        foodList = self.getFood(successor).asList()
+        features['successorScore'] = -len(foodList)#self.getScore(successor)
+
+        # Compute distance to the nearest food
+
+        if len(foodList) > 0: # This should always be True,  but better safe than sorry
+          myPos = successor.getAgentState(self.index).getPosition()
+          minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
+          features['distanceToFood'] = minDistance
+        return features
+
+    def getWeights(self, gameState, action):
+        return {'successorScore': 100, 'distanceToFood': -1}
+
+    ############END OFFENSIVE REFLEX CODE#################
