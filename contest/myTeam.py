@@ -134,7 +134,7 @@ class TeamData:
         for x in xrange:
             for y in range(grid.height):
                 if not grid[x][y]:
-                    self.borderDistances[(x, y)]= min(self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.data.borderPositions)
+                    self.borderDistances[(x, y)]= min(self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.borderPositions)
 
     def logFood(self, gameState):
         self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
@@ -300,7 +300,7 @@ class RealAgent(CaptureAgent):
         weights["foodEatenBySelf"] = 0
         weights["enemyPacmanFood"] = 0
         weights["distToHome"] = max(features["foodEatenBySelf"]/-4, -5) if features["distToHome"] < features["movesRemaing"] else -5 #Tweak value later
-
+        return weights
 
 
     def getFeatures(self, gameState):
