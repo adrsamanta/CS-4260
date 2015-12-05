@@ -116,7 +116,23 @@ class TeamData:
         #should be all legal positions
         self.legalPositions = gameState.data.layout.walls.asList(key = False) #TODO: NEEDS TO BE CHECKED
         self.defendFoodGrid=[]
+        halfway = agent.getFood(gameState).width / 2
+        self.borderPositions=[(halfway, y) for y in range(agent.getFood(gameState).height) if not gameState.hasWall(halfway, y)]
 
+        self.borderDistances={}
+
+    def calcBorderDistances(self, gameState):
+        grid = gameState.getWalls()
+        halfway = grid.width / 2
+        if self.mAgent.red:
+            xrange = range(halfway)
+        else:
+            xrange = range(halfway, grid.width)
+
+        for x in xrange:
+            for y in range(grid.height):
+                if not grid[x][y]:
+                    self.borderDistances[(x, y)]= min(self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.data.borderPositions)
 
     def logFood(self, gameState):
         self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
@@ -314,8 +330,8 @@ class RealAgent(CaptureAgent):
     #gain of going to home side
 
     def getDistanceToHomeSide(self, gameState):
-        halfway = self.getFood(gameState).width / 2
-        return gameState.getAgentPosition(self.index)[0] - halfway
+        myPos=self.getMyPos(gameState)
+        return self.data.borderPositions[myPos] if myPos in self.data.borderPositions else 0
 
 
 
