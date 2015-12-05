@@ -279,7 +279,6 @@ class RealAgent(CaptureAgent):
         # emissionModel = busters.getObservationDistribution(noisyDistance)
         myPos = gameState.getAgentPosition(self.index)
 
-
         noisyDistance = gameState.getAgentDistances()[agentIndex]
         beliefs= self.getmDistribs(agentIndex)
         allPossible = util.Counter()
@@ -303,14 +302,16 @@ class RealAgent(CaptureAgent):
         self.setDistrib(agentIndex, allPossible)
 
     #does inference based on where the agent could move to and updates opponents distributions
-    def positionMoveInfer(self, agentIndex, gameState=None):
+    def positionMoveInfer(self, agentIndex, gameState=None, beliefs=None):
         if not gameState:
             gameState=self.getCurrentObservation()
+        if not beliefs:
+            beliefs= self.getmDistribs(agentIndex)
         #myState=gameState.getAgentState(self.index)
         myPos=gameState.getAgentPosition(self.index)
 
         possiblePositions = util.Counter()
-        beliefs= self.getmDistribs(agentIndex)
+
         for pos in self.legalPositions:
             #if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
             if beliefs[pos] > 0 and util.manhattanDistance(myPos, pos)>SIGHT_RANGE:
@@ -319,7 +320,7 @@ class RealAgent(CaptureAgent):
                     possiblePositions[position] += prob * beliefs[pos]
 
         possiblePositions.normalize()
-        self.setDistrib(agentIndex, possiblePositions)
+        return possiblePositions
 
 
     #returns a probability distribution for the agents subsequent position, given that it is at curPos
@@ -387,7 +388,8 @@ class RealAgent(CaptureAgent):
                     #check if any food was eaten. If so, don't do inference. if not, do inference
                     if not self.checkFood():
                         self.positionMoveInfer(i)
-                        self.positionDistanceInfer(i)
+                        #positionDistanceInfer returns the new distribution, so update the saved distribution
+                        self.setDistrib(i, self.positionDistanceInfer(i))
             else:
                 #do inference based on distance
                 self.positionDistanceInfer(i)
