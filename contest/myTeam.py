@@ -25,7 +25,7 @@ from time import time
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='RealAgent', second='TestAgent'):
+               first='RealAgent', second='RealAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -94,44 +94,7 @@ class DummyAgent(CaptureAgent):
         return random.choice(actions)
 
 
-class TestAgent(CaptureAgent):
-    def registerInitialState(self, gameState):
-        """
-        This method handles the initial setup of the
-        agent to populate useful fields (such as what team
-        we're on).
 
-        A distanceCalculator instance caches the maze distances
-        between each pair of positions, so your agents can use:
-        self.distancer.getDistance(p1, p2)
-
-        IMPORTANT: This method may run for at most 15 seconds.
-        """
-
-        '''
-        Make sure you do not delete the following line. If you would like to
-        use Manhattan distances instead of maze distances in order to save
-        on initialization time, please take a look at
-        CaptureAgent.registerInitialState in captureAgents.py.
-        '''
-        CaptureAgent.registerInitialState(self, gameState)
-
-
-    def chooseAction(self, gameState):
-        actions = gameState.getLegalActions(self.index)
-        myState = gameState.getAgentState(self.index)
-
-        otherState=gameState.getAgentState(self.getOpponents(gameState)[0])
-        pos = otherState.getPosition()
-        #print('TestAgent: ',pos)
-
-        p2=gameState.data.layout.agentPositions[self.getOpponents(gameState)[0]][-1]
-        g=5
-        '''
-        You should change this in your own agent.
-        '''
-
-        return random.choice(actions)
 
 
 class TeamData:
@@ -215,8 +178,10 @@ class RealAgent(CaptureAgent):
         '''
         You should change this in your own agent.
         '''
-        return self.actionSearch(self.index, gameState)
-        #return random.choice(actions)
+        self.data.logFood(gameState)
+        self.updatePosDist(gameState)
+        #return self.actionSearch(self.index, gameState)
+        return random.choice(gameState.getLegalActions(self.index))
 
     def actionSearch(self, agentIndex, gameState):
         ##do a breadth first search until time runs out
@@ -374,14 +339,16 @@ class RealAgent(CaptureAgent):
 
         minDist=self.getMazeDistance(neighbors[0], objectives[0])
         bestNeighbor=neighbors[0]
+        #find the neighbor that is closest to an objective
         for obj in objectives:
             for neighbor in neighbors:
                 if self.getMazeDistance(obj, neighbor)<minDist:
                     bestNeighbor=neighbor
         defProb=.8
         otherProbs=(1-defProb)/(len(neighbors)-1)
+        #set the probability we move to a neighbor that is not bestNeighbor to the correct value
         for n in neighbors:
-            probs[neighbor]=otherProbs
+            probs[n]=otherProbs
         probs[bestNeighbor]=defProb
 
         return probs
@@ -391,6 +358,7 @@ class RealAgent(CaptureAgent):
         prevFood=self.data.defendFoodGrid[-2]
         currFood=self.data.defendFoodGrid[-1]
         halfway = currFood.width / 2
+        #copied from halfgrid
         if self.red:
             xrange = range(halfway)
         else:
@@ -417,11 +385,10 @@ class RealAgent(CaptureAgent):
                 if self.index==0 and self.getPreviousObservation()==None: #this is the first move, don't do inference
                     pass
                 else:
+                    #check if any food was eaten. If so, don't do inference. if not, do inference
                     if not self.checkFood():
                         self.positionMoveInfer(i)
                         self.positionDistanceInfer(i)
             else:
+                #do inference based on distance
                 self.positionDistanceInfer(i)
-
-    def chooseAction(self, gameState):
-        self.data.logFood(gameState)
