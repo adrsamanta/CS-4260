@@ -17,13 +17,15 @@ import random, time, util
 from game import Directions
 import game
 from capture import GameState, SIGHT_RANGE
+from collections import namedtuple
+from time import time
 
 #################
 # Team creation #
 #################
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='TestAgent', second='TestAgent'):
+               first='RealAgent', second='TestAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -121,7 +123,7 @@ class TestAgent(CaptureAgent):
 
         otherState=gameState.getAgentState(self.getOpponents(gameState)[0])
         pos = otherState.getPosition()
-        print(pos)
+        #print('TestAgent: ',pos)
 
         p2=gameState.data.layout.agentPositions[self.getOpponents(gameState)[0]][-1]
         g=5
@@ -135,10 +137,10 @@ class TestAgent(CaptureAgent):
 class TeamData:
     RedData=None
     BlueData=None
-    def __init__(self, gameState, team):
+    def __init__(self, gameState, team, opps):
         self.team=team
-        self.mDistribs=[]
-        opps=self.team[0].getOpponents(gameState)
+        self.mDistribs=[None]*gameState.getNumAgents()
+        #opps=self.team[0].getOpponents(gameState)
         for i in range(gameState.getNumAgents()):
             if i in opps:
                 dist=util.Counter()
@@ -184,22 +186,105 @@ class RealAgent(CaptureAgent):
         #TODO: figure out how to avoid doing mazeDistances for both agents
         #TODO: Look into stealing mazeDistances from other team if possible
         CaptureAgent.registerInitialState(self, gameState)
-
         #set up data repository
         if self.red:
             if not TeamData.RedData:
-                TeamData.RedData=TeamData(gameState, self.getTeam(gameState))
+                TeamData.RedData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState))
             self.data=TeamData.RedData
 
         else:
             if not TeamData.BlueData:
-                TeamData.BlueData=TeamData(gameState, self.getTeam(gameState))
+                TeamData.BlueData=TeamData(gameState, self.getTeam(gameState), self.getOpponents(gameState))
             self.data=TeamData.BlueData
 
         self.legalPositions=self.data.legalPositions
         #set up distribution list that will hold belief distributions for agents
 
+    def chooseAction(self, gameState):
+        #print(pos)
 
+        #get a list of actions
+        #update belieft distribution about enemy positions
+        #is anyone scared
+        #food far away from know enemies
+        #food close to enemies but near capsule
+        #if theres one action:  update belief distribution and take that action
+        #
+        #else calculate utility function for each action
+        #
+        '''
+        You should change this in your own agent.
+        '''
+        return self.actionSearch(self.index, gameState)
+        #return random.choice(actions)
+
+    def actionSearch(self, agentIndex, gameState):
+        ##do a breadth first search until time runs out
+        #dictionary to keep track of visited spots so we can look up their utility in constant time
+        visited = dict()
+        #set to keep track of
+        visitedInSequence = set()
+        #queue of action states to visit
+        toVisit = util.Queue()
+        actions = []
+        #lower bound and upper bound set to arbitrary values for testing purposes
+        upperBound = 999
+        lowerBound = -1
+        #start time so we can terminate before 1 second time limit
+        start_time = time()
+        debug = False
+        #way to keep track of best action so far????
+        bestActionSequence = [gameState.getLegalActions()]
+        bestActionSequenceUtility = None
+        #make sure this does a deep copy
+        enemy_belief_states = list(self.data.mDistribs)
+        #named tuple for readability
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence gameState enemy_belief_states utility')
+        toVisit.push(State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0))
+        #using a constant of .75 seconds for now
+        while time() - start_time < .75 and not toVisit.isEmpty():
+            curr_state = toVisit.pop()
+
+            for next_action in curr_state.gameState.getLegalActions():
+                next_game_state = curr_state.gameState.generateSuccessor(curr_state.agentIndex, next_action)
+
+                if debug:
+                    print("curr state actions: ", curr_state.actions)
+                    print("next action: ", next_action)
+
+                new_actions = list(curr_state.actions)
+                new_actions.append(next_action)
+
+                if debug:
+                    print("new actions: ", new_actions)
+
+                #update enemy belief states based on move
+                #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
+                #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
+                enemy_belief_states = []
+                #I dont think this dictionary works because all state objects will be different
+                #Either need to define a new dictionary class that compares internal values of states
+                #Or store more specific information in the dictionary - such as index positions
+                if next_game_state in visited:
+                    state_utility = visited[next_game_state]
+                else:
+                    state_utility = self.Utility(next_game_state)
+                    visited[next_game_state] = state_utility
+                #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
+                #need a way to calculate upper and lower bound
+                if state_utility > lowerBound and state_utility < upperBound:
+                    total_utility = state_utility + curr_state.utility
+                    if not bestActionSequenceUtility or total_utility > bestActionSequenceUtility:
+                        bestActionSequenceUtility = total_utility
+                        bestActionSequence = new_actions
+                    toVisit.push(State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility))
+        #Currently first action in action sequence with the highest utility
+        #Should we remember the entire sequence to make later computations faster
+        return bestActionSequence[0]
+
+
+    def Utility(self, gameState):
+        return 0
 
     def _setKnownPosDist(self, agentIndex, knownPos):
         dist=self.getmDistribs(agentIndex)
@@ -340,4 +425,3 @@ class RealAgent(CaptureAgent):
 
     def chooseAction(self, gameState):
         self.data.logFood(gameState)
-        self.updatePosDist(gameState)
