@@ -432,6 +432,28 @@ class RealAgent(CaptureAgent):
         else:
           return successor
 
+    def getDistToNearestCapsule(self, gameState):
+        if gameState.isOnRedTeam(self.index):
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getRedCapsules()])
+        else:
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getBlueCapsules()])
+
+    def getScaredMovesRemaining(self, gameState):
+        return gameState.data.getAgentState(self.index).scaredTimer
+
+    def getFoodEatenByEnemyAgent(self, gameState, agentIndex):
+        return gameState.data.getAgentState(agentIndex).numCarrying
+
+    #food in our stomach
+    def getFoodEatenBySelf(self, gameState):
+        return gameState.data.getAgentState(self.index).numCarrying
+
+    #gain of going to home side
+
+    def getDistanceToHomeSide(self, gameState):
+        halfway = self.getFood(gameState).width / 2
+        return gameState.getAgentPosition(self.index)[0] - halfway
+
     def evaluate(self, gameState, action):
         """
         Computes a linear combination of features and feature weights
