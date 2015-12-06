@@ -217,8 +217,8 @@ class RealAgent(CaptureAgent):
         toVisit = util.Queue()
         actions = []
         #lower bound and upper bound set to arbitrary values for testing purposes
-        upperBound = 999
-        lowerBound = -1
+        upperBound = 999999
+        lowerBound = -99999
         #start time so we can terminate before 1 second time limit
         start_time = time.time()
         debug = True
@@ -234,18 +234,15 @@ class RealAgent(CaptureAgent):
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
 
-            for next_action in curr_state.currGameState.getLegalActions():
+            for next_action in curr_state.currGameState.getLegalActions(self.index):
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
 
                 if debug:
-                    print("curr state actions: ", curr_state.actions)
+                    #print("curr state actions: ", curr_state.actions)
                     print("next action: ", next_action)
 
                 new_actions = list(curr_state.actions)
                 new_actions.append(next_action)
-
-                if debug:
-                    print("new actions: ", new_actions)
 
                 #update enemy belief states based on move
                 #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
@@ -263,6 +260,8 @@ class RealAgent(CaptureAgent):
                 #need a way to calculate upper and lower bound
                 if state_utility > lowerBound and state_utility < upperBound:
                     total_utility = state_utility + curr_utility
+                    if debug:
+                        print("new actions: ", new_actions, " utility: ", total_utility)
                     if not bestActionSequenceUtility or total_utility > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility
                         bestActionSequence = new_actions
