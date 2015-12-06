@@ -228,8 +228,8 @@ class RealAgent(CaptureAgent):
         #make sure this does a deep copy
         enemy_belief_states = list(self.data.mDistribs)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence gameState enemy_belief_states utility')
-        toVisit.push(State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState enemy_belief_states utility')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
