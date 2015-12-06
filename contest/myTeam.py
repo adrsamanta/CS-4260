@@ -539,7 +539,7 @@ class RealAgent(CaptureAgent):
                     if not self.checkFood():
                         self.positionMoveInfer(i)
                         #positionDistanceInfer returns the new distribution, so update the saved distribution
-                        self.setDistrib(i, self.positionDistanceInfer(i))
+                        self.setDistrib(i, self.positionMoveInfer(i))
             else:
                 #do inference based on distance
                 self.positionDistanceInfer(i)
