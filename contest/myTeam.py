@@ -214,7 +214,7 @@ class RealAgent(CaptureAgent):
         #set to keep track of
         visitedInSequence = set()
         #queue of action states to visit
-        toVisit = util.Queue()
+        toVisit = util.PriorityQueueWithFunction(lambda x: x[1])
         actions = []
         #lower bound and upper bound set to arbitrary values for testing purposes
         upperBound = 999
@@ -228,14 +228,14 @@ class RealAgent(CaptureAgent):
         #make sure this does a deep copy
         enemy_belief_states = list(self.data.mDistribs)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence gameState enemy_belief_states utility')
-        toVisit.push(State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState enemy_belief_states utility')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
-            curr_state = toVisit.pop()
+            curr_state, curr_utility = toVisit.pop()
 
-            for next_action in curr_state.gameState.getLegalActions():
-                next_game_state = curr_state.gameState.generateSuccessor(curr_state.agentIndex, next_action)
+            for next_action in curr_state.currGameState.getLegalActions():
+                next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
 
                 if debug:
                     print("curr state actions: ", curr_state.actions)
@@ -262,11 +262,11 @@ class RealAgent(CaptureAgent):
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
                 if state_utility > lowerBound and state_utility < upperBound:
-                    total_utility = state_utility + curr_state.utility
+                    total_utility = state_utility + curr_utility
                     if not bestActionSequenceUtility or total_utility > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility
                         bestActionSequence = new_actions
-                    toVisit.push(State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility))
+                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility), total_utility))
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
         return bestActionSequence[0]
