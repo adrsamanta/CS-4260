@@ -282,22 +282,29 @@ class RealAgent(CaptureAgent):
         numberofsearches = 0
         while time() - start_time < .85 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
-
-            for next_action in curr_state.currGameState.getLegalActions(self.index):
+            repeated_state = False
+            legal_actions = curr_state.currGameState.getLegalActions(self.index)
+            if len(legal_actions) == 1:
+                repeated_state = True   
+            for next_action in legal_actions:         
                 st = time()
                 if next_action=="Stop":
                     continue
+                # s = time()
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
+                # n = time()
+                # print "generating next game state took ", n - s, " seconds"
                 my_pos = self.getMyPos(next_game_state)
-                if my_pos not in curr_state.visitedInSequence:
+                if repeated_state or my_pos not in curr_state.visitedInSequence:
                     new_visited = list(curr_state.visitedInSequence)
                     new_visited.append(my_pos)
 
                     #do inference on where enemy agents are
-                    s = time()
-                    for i in self.getOpponents(next_game_state):
-                        self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
-                    print "Opponen distribution inferences takes ", time() - s, " seconds"
+                    # s = time()
+                    # for i in self.getOpponents(next_game_state):
+                    #     self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
+                    # n = time()
+                    # print "Opponen distribution inferences takes ", n - s, " seconds"
 
                     if debug:
                         #print("curr state actions: ", curr_state.actions)
