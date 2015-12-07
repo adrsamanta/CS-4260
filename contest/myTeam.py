@@ -14,7 +14,7 @@
 #TODO LIST:
 """
 -add inference to state space search
-    save return val of positionMoveInfer in State,
+    save return val of positionMoveInfer in State, use that as distrib. Might need to change mDistribs a lot, idk
 -weight going home higher if near enemy ghost
 -maybe weight running from ghosts higher
 -prune action sequences that takes us into many repeated positions when there isnt a significant increase in utility
