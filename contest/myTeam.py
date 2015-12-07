@@ -124,7 +124,7 @@ class TeamData:
             else:
                 self.mDistribs[i]=None
         #should be all legal positions
-        self.legalPositions = gameState.data.layout.walls.asList(key = False) #TODO: NEEDS TO BE CHECKED
+        self.legalPositions = gameState.data.layout.walls.asList(key = False)
         self.defendFoodGrid=[]
         halfway = agent.getFood(gameState).width / 2
         self.borderPositions=[(halfway, y) for y in range(agent.getFood(gameState).height) if not gameState.hasWall(halfway, y)]
@@ -152,7 +152,7 @@ class TeamData:
         self.offensive = not self.offensive
         return self.offensive
 
-#TODO: scared timer stuff in agent states, look at line 573 in capture
+
 class RealAgent(CaptureAgent):
     def registerInitialState(self, gameState):
         """
@@ -173,8 +173,6 @@ class RealAgent(CaptureAgent):
         on initialization time, please take a look at
         CaptureAgent.registerInitialState in captureAgents.py.
         '''
-        #TODO: figure out how to avoid doing mazeDistances for both agents
-        #TODO: Look into stealing mazeDistances from other team if possible
         CaptureAgent.registerInitialState(self, gameState)
         #set up data repository
         if self.red:
@@ -314,10 +312,12 @@ class RealAgent(CaptureAgent):
                 #Either need to define a new dictionary class that compares internal values of states
                 #Or store more specific information in the dictionary - such as index positions
                 next_state_features = self.getFeatures(next_game_state)
-                if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
-                    #continue, we're too close to an enemy ghost
-                    print "too close to ghost circuit"
-                    continue
+
+                #TODO: test the code below
+                # if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
+                #     #continue, we're too close to an enemy ghost
+                #     print "too close to ghost circuit"
+                #     continue
 
                 if next_game_state in visited:
                     state_utility = visited[next_game_state]
@@ -384,7 +384,7 @@ class RealAgent(CaptureAgent):
             elif feature=="foodDist":
                 utility+=5./feature_value*weights[feature]
             elif feature=="distToNearestCapsule":
-                utility+=4./feature_value*weights[feature] #TODO: make this better
+                utility+=4./feature_value*weights[feature]
             elif feature=="distToEnemyGhost":
                 utility+=6./feature_value * weights[feature]
             elif feature=="distToHome":
