@@ -223,7 +223,7 @@ class RealAgent(CaptureAgent):
         start_time = time.time()
         debug = False
         #way to keep track of best action so far????
-        bestActionSequence = [gameState.getLegalActions(self.index)]
+        bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
         #make sure this does a deep copy
         #enemy_belief_states = list(self.data.mDistribs)
@@ -250,6 +250,15 @@ class RealAgent(CaptureAgent):
                 new_actions = [action for action in curr_state.actions]
                 new_actions.append(next_action)
 
+                if isinstance(next_action, list):
+                    print("next_action: ", next_action)
+                    print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
+
+                for action in new_actions:
+                    if isinstance(action, list):
+                        print("curr state actions: ", curr_state.actions)
+                        print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
+                        print("next action: ", next_action)
                 #update enemy belief states based on move
                 #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
                 #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
