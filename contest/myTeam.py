@@ -314,7 +314,10 @@ class RealAgent(CaptureAgent):
                 #Either need to define a new dictionary class that compares internal values of states
                 #Or store more specific information in the dictionary - such as index positions
                 next_state_features = self.getFeatures(next_game_state)
-
+                if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
+                    #continue, we're too close to an enemy ghost
+                    print "too close to ghost circuit"
+                    continue
 
                 if next_game_state in visited:
                     state_utility = visited[next_game_state]
@@ -383,8 +386,12 @@ class RealAgent(CaptureAgent):
             elif feature=="distToNearestCapsule":
                 utility+=4./feature_value*weights[feature] #TODO: make this better
             elif feature=="distToEnemyGhost":
-                utility+=6./feature_value[i] * weights[feature]
+                utility+=6./feature_value * weights[feature]
+            elif feature=="distToHome":
+                utility+=4./feature_value*weights[feature]
             else:
+                if feature.lower().find("dist")!=-1:
+                    print feature, "not captured for special"
                 utility += feature_value * weights[feature]
 
         return utility
@@ -394,7 +401,7 @@ class RealAgent(CaptureAgent):
         def getEnemyGhostDistanceDistrib(distance):
 
             if 0<=distance <=2:
-                return -10
+                return -7
             elif 2<distance<=4:
                 return -1
             elif 4<distance<=6:
@@ -409,7 +416,7 @@ class RealAgent(CaptureAgent):
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
         weights["distToEnemyGhost"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
-                    if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"])
+                    if 0< features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"])
         weights["score"] = .5
         weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
@@ -443,7 +450,7 @@ class RealAgent(CaptureAgent):
         features["numEnemyPacmen"]=0
         features["distToEnemyPacman"]=[]
         features["numEnemyGhost"]=0
-        features["distToEnemyGhost"]=0
+        features["distToEnemyGhost"]=50000
         for i, enemy in zip(self.getOpponents(gameState), enemies):
             if enemy.isPacman:
                 features["numEnemyPacmen"]+=1
@@ -451,8 +458,7 @@ class RealAgent(CaptureAgent):
 
             else:
                 features["numEnemyGhost"]+=1
-                if features["distToEnemyGhost"]:
-                    features["distToEnemyGhost"]=min(self.getDistanceToEnemy(gameState, i), features["distToEnemyGhost"])
+                features["distToEnemyGhost"]=min(self.getDistanceToEnemy(gameState, i), features["distToEnemyGhost"])
 
         features["score"]=self.getScore(gameState)
         features["movesRemaining"]=gameState.data.timeleft
@@ -506,8 +512,12 @@ class RealAgent(CaptureAgent):
             dists=[self.getMazeDistance(self.getMyPos(gameState), pos)
                    for pos, prob in self.getmDistribs(enemyIndex).items() if prob>=.5]
             if len(dists)==0:
-                bestPos= max(self.getmDistribs(enemyIndex).items(),
+                try:
+                    bestPos= max(self.getmDistribs(enemyIndex).items(),
                            key= lambda x : x[1])
+                except ValueError:
+                    #:(
+                    return 6
                 return self.getMazeDistance(self.getMyPos(gameState), bestPos[0])
             # dists=[]
             # maxProb=0
