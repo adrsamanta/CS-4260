@@ -335,10 +335,10 @@ class RealAgent(CaptureAgent):
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
-                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6:
-                        #continue, we're too close to an enemy ghost
-                        print "too close to ghost circuit"
-                        continue
+                    # if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6:
+                    #     #continue, we're too close to an enemy ghost
+                    #     print "too close to ghost circuit"
+                    #     continue
 
 
 
