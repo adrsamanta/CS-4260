@@ -264,7 +264,6 @@ class RealAgent(CaptureAgent):
                 print "eat enemy short"
                 return action, 0
 
-
         #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
@@ -283,14 +282,17 @@ class RealAgent(CaptureAgent):
         numberofsearches = 0
         while time() - start_time < .85 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
-
-            for next_action in curr_state.currGameState.getLegalActions(self.index):
+            repeated_state = False
+            legal_actions = curr_state.currGameState.getLegalActions(self.index)
+            if len(legal_actions) == 1:
+                repeated_state = True
+            for next_action in legal_actions:
                 st = time()
                 if next_action=="Stop":
                     continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
                 my_pos = self.getMyPos(next_game_state)
-                if my_pos not in curr_state.visitedInSequence:
+                if repeated_state or my_pos not in curr_state.visitedInSequence:
                     new_visited = list(curr_state.visitedInSequence)
                     new_visited.append(my_pos)
 
