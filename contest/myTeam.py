@@ -126,7 +126,7 @@ class TeamData:
     def calcBorderDistances(self, gameState):
         grid = gameState.getWalls()
         halfway = grid.width / 2
-        if self.mAgent.red:
+        if not self.mAgent.red:
             xrange = range(halfway)
         else:
             xrange = range(halfway, grid.width)
@@ -258,7 +258,7 @@ class RealAgent(CaptureAgent):
                     visited[next_game_state] = state_utility
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
-                if state_utility > lowerBound and state_utility < upperBound:
+                if lowerBound < state_utility < upperBound:
                     total_utility = state_utility + curr_utility
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
@@ -275,11 +275,16 @@ class RealAgent(CaptureAgent):
 
         features = self.getFeatures(gameState)
         weights = self.getWeights(features, gameState)
+
         utility = 0
         for feature, feature_value in features.items():
             if isinstance(feature_value,list):
                 for i in range(len(feature_value)):
                     utility += feature_value[i] * weights[feature][i]
+            elif feature=="distToEnemyPacman":
+                utility+=6/feature_value * weights[feature]
+            elif feature=="foodDist":
+                utility+=5/feature_value*weights[feature]
             else:
                 utility += feature_value * weights[feature]
 
@@ -287,19 +292,32 @@ class RealAgent(CaptureAgent):
 
     #weight on a -5 to 5 scale
     def getWeights(self, features, gameState):
+        def getEnemyGhostDistanceDistrib(distance):
+
+            if 0< distance <=2:
+                return -5
+            elif 2<distance<=4:
+                return -1
+            elif 4<distance<=6:
+                return -.2
+            else:
+                return 0
+
         weights = util.Counter()
         weights["foodDist"] = 3 if self.offensive else 2
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
-        weights["distToEnemyGhosts"] = -4 if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else 1
+        weights["distToEnemyGhosts"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
+                    if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhosts"])
         weights["score"] = .5
         weights["movesRemaing"] = 0
         weights["scaredMovesRemaining"] = 0
-        weights["foodEatenBySelf"] = 0
+        weights["foodEatenBySelf"] = 1
         weights["enemyPacmanFood"] = 0
-        weights["distToHome"] = max(features["foodEatenBySelf"]/-4, -5) if features["distToHome"] < features["movesRemaing"] else -5 #Tweak value later
+        weights["distToHome"] = max(features["foodEatenBySelf"]/-4, -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         return weights
+
 
 
     def getFeatures(self, gameState):
@@ -369,7 +387,7 @@ class RealAgent(CaptureAgent):
 
     def getDistanceToHomeSide(self, gameState):
         myPos=self.getMyPos(gameState)
-        return self.data.borderPositions[myPos] if myPos in self.data.borderPositions else 0
+        return self.data.borderDistances[myPos] if myPos in self.data.borderDistances else 0
 
 
 
