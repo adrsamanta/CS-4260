@@ -282,6 +282,8 @@ class RealAgent(CaptureAgent):
             print("AWKO TACO")
         utility = 0
         for feature, feature_value in features.items():
+            if not feature_value or not weights[feature]:
+                continue
             if isinstance(feature_value,list):
                 for i in range(len(feature_value)):
                     utility += feature_value[i] * weights[feature][i]
