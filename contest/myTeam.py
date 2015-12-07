@@ -363,9 +363,9 @@ class RealAgent(CaptureAgent):
                     #consideredStates[my_pos] = total_utility/len(new_actions)
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
-                    if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
-                        bestActionSequenceUtility = total_utility/len(new_actions)
-                        bestActionSequence = new_actions
+                    # if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
+                        # bestActionSequenceUtility = total_utility/len(new_actions)
+                        # bestActionSequence = new_actions
                     toVisit.push((State(agentIndex, new_actions, new_visited, next_game_state, next_state_features, total_utility, self.data.mDistribs), total_utility/len(new_actions)))
                     total_search_time += time() - st
                     numberofsearches += 1
@@ -386,6 +386,11 @@ class RealAgent(CaptureAgent):
         #         print(seq)
         #         print("\n\n")
             # raw_input()
+        while not toVisit.isEmpty():
+            state, avg_utility = toVisit.pop()
+            if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
+                bestActionSequenceUtility = avg_utility
+                bestActionSequence = state.actions
         print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0], bestActionSequenceUtility
 
