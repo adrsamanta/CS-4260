@@ -221,7 +221,7 @@ class RealAgent(CaptureAgent):
         lowerBound = -99999
         #start time so we can terminate before 1 second time limit
         start_time = time.time()
-        debug = True
+        debug = False
         #way to keep track of best action so far????
         bestActionSequence = [gameState.getLegalActions(self.index)]
         bestActionSequenceUtility = None
@@ -235,6 +235,8 @@ class RealAgent(CaptureAgent):
             curr_state, curr_utility = toVisit.pop()
 
             for next_action in curr_state.currGameState.getLegalActions(self.index):
+                if next_action=="Stop":
+                    continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
 
                 if debug:
@@ -268,6 +270,7 @@ class RealAgent(CaptureAgent):
                     toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility), total_utility))
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
+        print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0]
 
 
@@ -275,16 +278,19 @@ class RealAgent(CaptureAgent):
 
         features = self.getFeatures(gameState)
         weights = self.getWeights(features, gameState)
-
+        if len(features)!=len(weights):
+            print("AWKO TACO")
         utility = 0
         for feature, feature_value in features.items():
             if isinstance(feature_value,list):
                 for i in range(len(feature_value)):
                     utility += feature_value[i] * weights[feature][i]
             elif feature=="distToEnemyPacman":
-                utility+=6/feature_value * weights[feature]
+                utility+=6./feature_value * weights[feature]
             elif feature=="foodDist":
-                utility+=5/feature_value*weights[feature]
+                utility+=15./feature_value*weights[feature]
+            elif feature=="distToNearestCapsule":
+                utility+=4./feature_value*weights[feature] #TODO: make this better
             else:
                 utility += feature_value * weights[feature]
 
@@ -305,6 +311,7 @@ class RealAgent(CaptureAgent):
 
         weights = util.Counter()
         weights["foodDist"] = 3 if self.offensive else 2
+        weights["distToNearestCapsule"]= .5 #TODO: make this better
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
@@ -313,9 +320,10 @@ class RealAgent(CaptureAgent):
         weights["score"] = .5
         weights["movesRemaing"] = 0
         weights["scaredMovesRemaining"] = 0
+        weights["scaredEnemyMovesRemaining"]=0
         weights["foodEatenBySelf"] = 1
         weights["enemyPacmanFood"] = 0
-        weights["distToHome"] = max(features["foodEatenBySelf"]/-4, -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
+        weights["distToHome"] = max(features["foodEatenBySelf"]/-4., -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         return weights
 
 
