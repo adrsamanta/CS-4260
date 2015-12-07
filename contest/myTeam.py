@@ -210,9 +210,15 @@ class RealAgent(CaptureAgent):
         self.knownEnemies={}
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
+
         #print "infer time: ", time.time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-        return self.actionSearch(self.index, gameState)
+        bestAction= self.actionSearch(self.index, gameState)
+        newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
+        for i in self.getOpponents(gameState):
+            if i in self.knownEnemies and self.knownEnemies[i]==newPos:
+                self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
+        return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
 
@@ -234,6 +240,19 @@ class RealAgent(CaptureAgent):
         #start time so we can terminate before 1 second time limit
         start_time = time.time()
         debug = False
+        #do some quick thinking on this state first, check for obvious good moves
+        for action in gameState.getLegalActions(self.index):
+            newPos=game.Actions.getSuccessor(self.getMyPos(gameState), action)
+            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>=3:
+                print "foodShort"
+                return action
+            if self.onMySide(gameState, newPos) and self.getFoodEatenBySelf(gameState)>0:
+                print "home short"
+                return action
+            if self.getScaredMovesRemaining(gameState)==0 and newPos in self.knownEnemies.values():
+                print "eat enemy short"
+                return action
+
         #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
@@ -241,8 +260,8 @@ class RealAgent(CaptureAgent):
         #enemy_belief_states = list(self.data.mDistribs)
         currGameStateFeatures = self.getFeatures(gameState)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures positions mDistribs')
-        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, [self.getMyPos(gameState)], self.data.mDistribs), 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures totalUtility mDistribs')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, 0, self.data.mDistribs), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
@@ -255,6 +274,7 @@ class RealAgent(CaptureAgent):
                 #do inference on where enemy agents are
                 for i in self.getOpponents(next_game_state):
                     self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
+
                 if debug:
                     #print("curr state actions: ", curr_state.actions)
                     print("next action: ", next_action)
@@ -293,8 +313,8 @@ class RealAgent(CaptureAgent):
                 #     print "hallejueah!"
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
-                if (len(curr_state.actions) > 0 and state_utility > curr_utility/len(curr_state.actions)) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
-                    total_utility = state_utility + curr_utility
+                if (len(curr_state.actions) > 0 and state_utility > curr_utility) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
+                    total_utility = state_utility + curr_state.totalUtility
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
@@ -357,7 +377,7 @@ class RealAgent(CaptureAgent):
     def getWeights(self, features, gameState):
         def getEnemyGhostDistanceDistrib(distance):
 
-            if 0< distance <=2:
+            if 0<=distance <=2:
                 return -5
             elif 2<distance<=4:
                 return -1
@@ -378,7 +398,7 @@ class RealAgent(CaptureAgent):
         weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
         weights["scaredEnemyMovesRemaining"]=0
-        weights["foodEatenBySelf"] = 5*weights["foodDist"]
+        weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
         weights["distToHome"] = max(features["foodEatenBySelf"]/-4., -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         return weights
@@ -521,7 +541,7 @@ class RealAgent(CaptureAgent):
 
     #checks which side of the board a given position is, returns true if its my side
     def onMySide(self, gameState, pos):
-        halfway = self.getFood(gameState).width / 2
+        halfway = gameState.data.food.width / 2
         #copied from halfgrid
         if self.red:
             return pos[0] < halfway
@@ -641,6 +661,7 @@ class RealAgent(CaptureAgent):
             gameState=self.getCurrentObservation()
         for i in self.getOpponents(gameState):
             if gameState.getAgentPosition(i): #can observe the given agent
+
                 self._setKnownPosDist(i, gameState.getAgentPosition(i))
             #Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
             #(if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
