@@ -267,6 +267,9 @@ class RealAgent(CaptureAgent):
                 #Either need to define a new dictionary class that compares internal values of states
                 #Or store more specific information in the dictionary - such as index positions
                 next_state_features = self.getFeatures(next_game_state)
+                if next_state_features["foodEatenBySelf"]:
+                    print "hallejueah!"
+
                 if next_game_state in visited:
                     state_utility = visited[next_game_state]
                 else:
@@ -322,7 +325,7 @@ class RealAgent(CaptureAgent):
                     for i in range(len(feature_value)):
                         utility += feature_value[i] * weights[feature]
             elif feature=="foodDist":
-                utility+=15./feature_value*weights[feature]
+                utility+=5./feature_value*weights[feature]
             elif feature=="distToNearestCapsule":
                 utility+=4./feature_value*weights[feature] #TODO: make this better
             else:
@@ -355,7 +358,7 @@ class RealAgent(CaptureAgent):
         weights["movesRemaing"] = 0
         weights["scaredMovesRemaining"] = 0
         weights["scaredEnemyMovesRemaining"]=0
-        weights["foodEatenBySelf"] = 1
+        weights["foodEatenBySelf"] = 5*weights["foodDist"]
         weights["enemyPacmanFood"] = 0
         weights["distToHome"] = max(features["foodEatenBySelf"]/-4., -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         return weights
