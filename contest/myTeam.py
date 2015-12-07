@@ -213,11 +213,23 @@ class RealAgent(CaptureAgent):
 
         #print "infer time: ", time.time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-        bestAction= self.actionSearch(self.index, gameState)
+        bestAction, utility= self.actionSearch(self.index, gameState)
         newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
         for i in self.getOpponents(gameState):
             if i in self.knownEnemies and self.knownEnemies[i]==newPos:
                 self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
+            elif i in self.knownEnemies and \
+                            self.getMazeDistance(newPos, self.knownEnemies[i])<self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[i])\
+                            and not gameState.getAgentState(i).isPacman:
+                print "moved toward enemy"
+                nextGameState=gameState.generateSuccessor(self.index, bestAction)
+                currFeatures=self.getFeatures(gameState)
+                nextFeatures=self.getFeatures(nextGameState)
+                currUtility=self.Utility(gameState, currFeatures)
+                nextUtility=self.Utility(nextGameState, nextFeatures)
+                print "newpos=", newPos
+                print "utility=", utility
+
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
@@ -243,15 +255,15 @@ class RealAgent(CaptureAgent):
         #do some quick thinking on this state first, check for obvious good moves
         for action in gameState.getLegalActions(self.index):
             newPos=game.Actions.getSuccessor(self.getMyPos(gameState), action)
-            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>=3:
+            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>3:
                 print "foodShort"
-                return action
+                return action, 0
             if self.onMySide(gameState, newPos) and self.getFoodEatenBySelf(gameState)>0:
                 print "home short"
-                return action
-            if self.getScaredMovesRemaining(gameState)==0 and newPos in self.knownEnemies.values():
+                return action, 0
+            if self.getScaredMovesRemaining(gameState)==0 and newPos in self.knownEnemies.values() and self.onMySide(gameState, newPos):
                 print "eat enemy short"
-                return action
+                return action, 0
 
         #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
@@ -325,7 +337,7 @@ class RealAgent(CaptureAgent):
         #Should we remember the entire sequence to make later computations faster
         self.data.mDistribs=oldmDistribs
         print "bestActionSequence:", bestActionSequence
-        return bestActionSequence[0]
+        return bestActionSequence[0], bestActionSequenceUtility
 
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
     def estimatedUtilityWillIncrease(self, curr_state_features, next_state_features):
@@ -359,6 +371,8 @@ class RealAgent(CaptureAgent):
                     for i in range(len(feature_value)):
                         if not feature_value[i]:
                             print "featurevalue[i] was 0", feature, feature_value
+                            #we ate a pacman, add utility for this
+                            utility+=6*weights[feature]
                             continue
                         utility+=6./feature_value[i] * weights[feature]
                 else:
@@ -368,6 +382,8 @@ class RealAgent(CaptureAgent):
                 utility+=5./feature_value*weights[feature]
             elif feature=="distToNearestCapsule":
                 utility+=4./feature_value*weights[feature] #TODO: make this better
+            elif feature=="distToEnemyGhost":
+                utility+=6./feature_value[i] * weights[feature]
             else:
                 utility += feature_value * weights[feature]
 
@@ -378,7 +394,7 @@ class RealAgent(CaptureAgent):
         def getEnemyGhostDistanceDistrib(distance):
 
             if 0<=distance <=2:
-                return -5
+                return -10
             elif 2<distance<=4:
                 return -1
             elif 4<distance<=6:
@@ -388,7 +404,7 @@ class RealAgent(CaptureAgent):
 
         weights = util.Counter()
         weights["foodDist"] = 3 if self.offensive else 2
-        weights["distToNearestCapsule"]= .5 #TODO: make this better
+        weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
@@ -400,7 +416,7 @@ class RealAgent(CaptureAgent):
         weights["scaredEnemyMovesRemaining"]=0
         weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
-        weights["distToHome"] = max(features["foodEatenBySelf"]/-4., -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
+        weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         return weights
 
 
