@@ -27,7 +27,7 @@ from game import Directions
 import game
 from capture import GameState, SIGHT_RANGE
 from collections import namedtuple
-import time
+from time import time
 
 #################
 # Team creation #
@@ -131,6 +131,7 @@ class TeamData:
 
         self.borderDistances={}
         self.calcBorderDistances(gameState)
+        #self.consideredStates = {}
 
     def calcBorderDistances(self, gameState):
         grid = gameState.getWalls()
@@ -204,12 +205,12 @@ class RealAgent(CaptureAgent):
         '''
         You should change this in your own agent.
         '''
-        #startTime=time.time()
+        #startTime=time()
         self.knownEnemies={}
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
 
-        #print "infer time: ", time.time()-startTime
+        #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
         bestAction, utility= self.actionSearch(self.index, gameState)
         newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
@@ -237,7 +238,7 @@ class RealAgent(CaptureAgent):
         #dictionary to keep track of visited spots so we can look up their utility in constant time
         visited = dict()
         #set to keep track of
-        visitedInSequence = set()
+        visitedInSequence = []
         #queue of action states to visit
         toVisit = util.Queue()
         actions = []
@@ -248,7 +249,7 @@ class RealAgent(CaptureAgent):
         #save mDistribs so it can be modified below without losing the distribution
         oldmDistribs=list(self.data.mDistribs)
         #start time so we can terminate before 1 second time limit
-        start_time = time.time()
+        start_time = time()
         debug = False
         #do some quick thinking on this state first, check for obvious good moves
         for action in gameState.getLegalActions(self.index):
@@ -269,76 +270,114 @@ class RealAgent(CaptureAgent):
         #make sure this does a deep copy
         #enemy_belief_states = list(self.data.mDistribs)
         currGameStateFeatures = self.getFeatures(gameState)
+
+        maxSearchDepth = 0
+        consideredStates = []
+
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures totalUtility mDistribs')
+        State = namedtuple('State', 'agentIndex actions visitedInSequence currGameState currGameStateFeatures totalUtility mDistribs')
         toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, 0, self.data.mDistribs), 0))
         #using a constant of .75 seconds for now
-        while time.time() - start_time < .75 and not toVisit.isEmpty():
+        total_search_time = 0
+        numberofsearches = 0
+        while time() - start_time < .85 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
 
             for next_action in curr_state.currGameState.getLegalActions(self.index):
+                st = time()
                 if next_action=="Stop":
                     continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
+                my_pos = self.getMyPos(next_game_state)
+                if my_pos not in curr_state.visitedInSequence:
+                    new_visited = list(curr_state.visitedInSequence)
+                    new_visited.append(my_pos)
 
-                #do inference on where enemy agents are
-                for i in self.getOpponents(next_game_state):
-                    self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
+                    #do inference on where enemy agents are
+                    s = time()
+                    for i in self.getOpponents(next_game_state):
+                        self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
+                    print "Opponen distribution inferences takes ", time() - s, " seconds"
 
-                if debug:
-                    #print("curr state actions: ", curr_state.actions)
-                    print("next action: ", next_action)
-                if len(curr_state.actions) > 0 and isinstance(curr_state.actions[0], list):
-                    print("curr state actions: ", curr_state.actions)
-                    print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
-                    print("next action: ", next_action)
-                new_actions = [action for action in curr_state.actions]
-                new_actions.append(next_action)
-
-                if isinstance(next_action, list):
-                    print("next_action: ", next_action)
-                    print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
-
-                for action in new_actions:
-                    if isinstance(action, list):
+                    if debug:
+                        #print("curr state actions: ", curr_state.actions)
+                        print("next action: ", next_action)
+                    if len(curr_state.actions) > 0 and isinstance(curr_state.actions[0], list):
                         print("curr state actions: ", curr_state.actions)
                         print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
                         print("next action: ", next_action)
-                #update enemy belief states based on move
-                #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
-                #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
-                curr_state_features = curr_state.currGameStateFeatures
-                #I dont think this dictionary works because all state objects will be different
-                #Either need to define a new dictionary class that compares internal values of states
-                #Or store more specific information in the dictionary - such as index positions
-                next_state_features = self.getFeatures(next_game_state)
+                    new_actions = [action for action in curr_state.actions]
+                    new_actions.append(next_action)
+                    consideredStates.append(new_actions)
 
-                #TODO: test the code below
-                # if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
-                #     #continue, we're too close to an enemy ghost
-                #     print "too close to ghost circuit"
-                #     continue
+                    # if len(new_actions) > maxSearchDepth:
+                    #     maxSearchDepth = len(new_actions)
 
-                if next_game_state in visited:
-                    state_utility = visited[next_game_state]
-                else:
-                    state_utility = self.Utility(next_game_state, next_state_features)
-                    visited[next_game_state] = state_utility
-                # if next_state_features["foodEatenBySelf"]:
-                #     print "hallejueah!"
-                #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
-                #need a way to calculate upper and lower bound
-                if (len(curr_state.actions) > 0 and state_utility > curr_utility) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
+                    # if isinstance(next_action, list):
+                    #     print("next_action: ", next_action)
+                    #     print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
+
+                    # for action in new_actions:
+                    #     if isinstance(action, list):
+                    #         print("curr state actions: ", curr_state.actions)
+                    #         print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
+                    #         print("next action: ", next_action)
+                    #update enemy belief states based on move
+                    #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
+                    #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
+                    curr_state_features = curr_state.currGameStateFeatures
+                    #I dont think this dictionary works because all state objects will be different
+                    #Either need to define a new dictionary class that compares internal values of states
+                    #Or store more specific information in the dictionary - such as index positions
+                    next_state_features = self.getFeatures(next_game_state)
+
+                    #TODO: test the code below
+                    # if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
+                    #     #continue, we're too close to an enemy ghost
+                    #     print "too close to ghost circuit"
+                    #     continue
+
+                    if next_game_state in visited:
+                        state_utility = visited[next_game_state]
+                    else:
+                        #s = time()
+                        state_utility = self.Utility(next_game_state, next_state_features)
+                        #print "Calculating utility takes ", time() - s, " seconds"
+                        visited[next_game_state] = state_utility
+                    # if next_state_features["foodEatenBySelf"]:
+                    #     print "hallejueah!"
+                    #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
+                    #need a way to calculate upper and lower bound
+                    #if (len(curr_state.actions) > 0 and state_utility > curr_utility) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
+                    #if not (new_visited.count(my_pos) > 2 and state_utility < 1.25 * curr_state.totalUtility):
+                    # print("visited in sequnce: ", curr_state.visitedInSequence)
+                    # print("my pos: ", my_pos)
+                    # print("my pos in visited: ", my_pos in curr_state.visitedInSequence)
+                    #if my_pos not in curr_state.visitedInSequence:
                     total_utility = state_utility + curr_state.totalUtility
+                    #consideredStates[my_pos] = total_utility/len(new_actions)
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility/len(new_actions)
                         bestActionSequence = new_actions
-                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility, self.data.mDistribs), total_utility/len(new_actions)))
+                    toVisit.push((State(agentIndex, new_actions, new_visited, next_game_state, next_state_features, total_utility, self.data.mDistribs), total_utility/len(new_actions)))
+                    total_search_time += time() - st
+                    numberofsearches += 1
+                # else:
+                #     print("actions pruned: ", new_actions)
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
+        #TODO: error check for when there are no capsules
         self.data.mDistribs=oldmDistribs
+        print "average search time: ", total_search_time/numberofsearches
+        print "number of states considered: ", numberofsearches
+        print "max search depth", max(len(i) for i in consideredStates)
+        # if maxSearchDepth < 5:
+        #     for seq in consideredStates:
+        #         print(seq)
+        #         print("\n\n")
+            # raw_input()
         print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0], bestActionSequenceUtility
 
@@ -710,7 +749,7 @@ class RealAgent(CaptureAgent):
     # def offensiveReflex(self, gameState):
     #     actions = gameState.getLegalActions(self.index)
     #     values = [self.evaluate(gameState, a) for a in actions]
-    #     # print 'eval time for agent %d: %.4f' % (self.index, time.time() - start)
+    #     # print 'eval time for agent %d: %.4f' % (self.index, time() - start)
     #
     #     maxValue = max(values)
     #     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
