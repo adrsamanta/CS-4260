@@ -17,6 +17,7 @@
     save return val of positionMoveInfer in State, use that as distrib. Might need to change mDistribs a lot, idk
 -weight going home higher if near enemy ghost
 -maybe weight running from ghosts higher
+-Add short circuit in state space search, where if can eat food safely, eat the food always. there's not a better move there
 -prune action sequences that takes us into many repeated positions when there isnt a significant increase in utility
 """
 
@@ -227,6 +228,9 @@ class RealAgent(CaptureAgent):
         #lower bound and upper bound set to arbitrary values for testing purposes
         upperBound = 999999
         lowerBound = -99999
+
+        #save mDistribs so it can be modified below without losing the distribution
+        oldmDistribs=list(self.data.mDistribs)
         #start time so we can terminate before 1 second time limit
         start_time = time.time()
         debug = False
@@ -237,8 +241,8 @@ class RealAgent(CaptureAgent):
         #enemy_belief_states = list(self.data.mDistribs)
         currGameStateFeatures = self.getFeatures(gameState)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures positions')
-        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, [self.getMyPos(gameState)]), 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures positions mDistribs')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, [self.getMyPos(gameState)], self.data.mDistribs), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
@@ -248,6 +252,9 @@ class RealAgent(CaptureAgent):
                     continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
 
+                #do inference on where enemy agents are
+                for i in self.getOpponents(next_game_state):
+                    self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
                 if debug:
                     #print("curr state actions: ", curr_state.actions)
                     print("next action: ", next_action)
@@ -293,9 +300,10 @@ class RealAgent(CaptureAgent):
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility/len(new_actions)
                         bestActionSequence = new_actions
-                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility), total_utility/len(new_actions)))
+                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility, self.data.mDistribs), total_utility/len(new_actions)))
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
+        self.data.mDistribs=oldmDistribs
         print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0]
 
