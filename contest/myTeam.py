@@ -335,7 +335,7 @@ class RealAgent(CaptureAgent):
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
-                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman:
+                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6:
                         #continue, we're too close to an enemy ghost
                         print "too close to ghost circuit"
                         continue
@@ -375,9 +375,12 @@ class RealAgent(CaptureAgent):
         #Should we remember the entire sequence to make later computations faster
         #TODO: error check for when there are no capsules
         self.data.mDistribs=oldmDistribs
-        print "average search time: ", total_search_time/numberofsearches
-        print "number of states considered: ", numberofsearches
-        print "max search depth", max(len(i) for i in consideredStates)
+        try:
+            print "average search time: ", total_search_time/numberofsearches
+            print "number of states considered: ", numberofsearches
+            print "max search depth", max(len(i) for i in consideredStates)
+        except Exception:
+            pass
         # if maxSearchDepth < 5:
         #     for seq in consideredStates:
         #         print(seq)
