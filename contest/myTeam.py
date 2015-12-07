@@ -287,7 +287,7 @@ class RealAgent(CaptureAgent):
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
                 if (len(curr_state.actions) > 0 and state_utility > curr_utility/len(curr_state.actions)) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
-                    total_utility = *state_utility + curr_utility
+                    total_utility = state_utility + curr_utility
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
