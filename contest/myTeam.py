@@ -264,6 +264,7 @@ class RealAgent(CaptureAgent):
                 print "eat enemy short"
                 return action, 0
 
+
         #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
@@ -294,10 +295,10 @@ class RealAgent(CaptureAgent):
                     new_visited.append(my_pos)
 
                     #do inference on where enemy agents are
-                    s = time()
-                    for i in self.getOpponents(next_game_state):
-                        self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
-                    print "Opponen distribution inferences takes ", time() - s, " seconds"
+                    # s = time()
+                    # for i in self.getOpponents(next_game_state):
+                    #     self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
+                    # print "Opponen distribution inferences takes ", time() - s, " seconds"
 
                     if debug:
                         #print("curr state actions: ", curr_state.actions)
@@ -332,10 +333,12 @@ class RealAgent(CaptureAgent):
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
-                    # if next_state_features["distToEnemyGhost"]<=1 and next_game_state.getAgentState(self.index).isPacman:
-                    #     #continue, we're too close to an enemy ghost
-                    #     print "too close to ghost circuit"
-                    #     continue
+                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman:
+                        #continue, we're too close to an enemy ghost
+                        print "too close to ghost circuit"
+                        continue
+
+
 
                     if next_game_state in visited:
                         state_utility = visited[next_game_state]
