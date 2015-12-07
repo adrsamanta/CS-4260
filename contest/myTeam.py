@@ -274,8 +274,8 @@ class RealAgent(CaptureAgent):
                 else:
                     state_utility = self.Utility(next_game_state, next_state_features)
                     visited[next_game_state] = state_utility
-                if next_state_features["foodEatenBySelf"]:
-                    print "hallejueah!"
+                # if next_state_features["foodEatenBySelf"]:
+                #     print "hallejueah!"
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
                 if self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
@@ -294,7 +294,7 @@ class RealAgent(CaptureAgent):
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
     def estimatedUtilityWillIncrease(self, curr_state_features, next_state_features):
         if self.offensive:
-            return next_state_features["foodDist"] < curr_state_features["foodDist"] or next_state_features["foodEatenBySelf"] > next_state_features["foodEatenBySelf"]
+            return next_state_features["foodDist"] < curr_state_features["foodDist"] or next_state_features["foodEatenBySelf"] > curr_state_features["foodEatenBySelf"]
         if next_state_features["numEnemyPacmen"] == 0:
             return True
         if curr_state_features["numEnemyPacmen"] == 0:
@@ -311,6 +311,9 @@ class RealAgent(CaptureAgent):
         weights = self.getWeights(features, gameState)
         if len(features)!=len(weights):
             print("AWKO TACO")
+            for key in features.keys():
+                if key not in weights:
+                    print key
         utility = 0
         for feature, feature_value in features.items():
             if not feature_value or not weights[feature]:
@@ -353,10 +356,10 @@ class RealAgent(CaptureAgent):
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
-        weights["distToEnemyGhosts"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
-                    if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhosts"])
+        weights["distToEnemyGhost"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
+                    if features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"])
         weights["score"] = .5
-        weights["movesRemaing"] = 0
+        weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
         weights["scaredEnemyMovesRemaining"]=0
         weights["foodEatenBySelf"] = 5*weights["foodDist"]
@@ -373,15 +376,18 @@ class RealAgent(CaptureAgent):
 
 
         foodList=self.getFood(gameState).asList()
-        minDist=self.getMazeDistance(myPos, foodList[0])
-        for pos in foodList:
-            dist=self.getMazeDistance(myPos, pos)
-            if dist<minDist:
-                minDist=dist
-                if dist==1:
-                    break
-        features["foodDist"]=minDist
 
+        if len(foodList):
+            minDist=self.getMazeDistance(myPos, foodList[0])
+            for pos in foodList:
+                dist=self.getMazeDistance(myPos, pos)
+                if dist<minDist:
+                    minDist=dist
+                    if dist==1:
+                        break
+            features["foodDist"]=minDist
+        else:
+            features["foodDist"]=0
         features["numEnemyPacmen"]=0
         features["distToEnemyPacman"]=[]
         features["numEnemyGhost"]=0
@@ -450,7 +456,7 @@ class RealAgent(CaptureAgent):
             if len(dists)==0:
                 bestPos= max(self.getmDistribs(enemyIndex).items(),
                            key= lambda x : x[1])
-                return self.getMazeDistance(self.getMyPos(gameState), bestPos)
+                return self.getMazeDistance(self.getMyPos(gameState), bestPos[0])
             # dists=[]
             # maxProb=0
             # maxProbPos=None
