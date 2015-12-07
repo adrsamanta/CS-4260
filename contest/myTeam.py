@@ -264,8 +264,8 @@ class RealAgent(CaptureAgent):
                     total_utility = state_utility + curr_utility
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
-                    if not bestActionSequenceUtility or total_utility > bestActionSequenceUtility:
-                        bestActionSequenceUtility = total_utility
+                    if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
+                        bestActionSequenceUtility = total_utility/len(new_actions)
                         bestActionSequence = new_actions
                     toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility), total_utility))
         #Currently first action in action sequence with the highest utility
