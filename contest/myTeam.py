@@ -229,8 +229,8 @@ class RealAgent(CaptureAgent):
         #enemy_belief_states = list(self.data.mDistribs)
         currGameStateFeatures = self.getFeatures(gameState)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures utility')
-        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, 0), 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures positions')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, [self.getMyPos(gameState)]), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
@@ -284,7 +284,7 @@ class RealAgent(CaptureAgent):
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility/len(new_actions)
                         bestActionSequence = new_actions
-                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility), total_utility))
+                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility), total_utility/len(new_actions)))
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
         print "bestActionSequence:", bestActionSequence
