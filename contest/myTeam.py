@@ -267,14 +267,15 @@ class RealAgent(CaptureAgent):
                 #Either need to define a new dictionary class that compares internal values of states
                 #Or store more specific information in the dictionary - such as index positions
                 next_state_features = self.getFeatures(next_game_state)
-                if next_state_features["foodEatenBySelf"]:
-                    print "hallejueah!"
+
 
                 if next_game_state in visited:
                     state_utility = visited[next_game_state]
                 else:
                     state_utility = self.Utility(next_game_state, next_state_features)
                     visited[next_game_state] = state_utility
+                if next_state_features["foodEatenBySelf"]:
+                    print "hallejueah!"
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
                 if self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
@@ -293,7 +294,7 @@ class RealAgent(CaptureAgent):
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
     def estimatedUtilityWillIncrease(self, curr_state_features, next_state_features):
         if self.offensive:
-            return next_state_features["foodDist"] < curr_state_features["foodDist"]
+            return next_state_features["foodDist"] < curr_state_features["foodDist"] or next_state_features["foodEatenBySelf"] > next_state_features["foodEatenBySelf"]
         if next_state_features["numEnemyPacmen"] == 0:
             return True
         if curr_state_features["numEnemyPacmen"] == 0:
