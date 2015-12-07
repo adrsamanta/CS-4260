@@ -287,6 +287,9 @@ class RealAgent(CaptureAgent):
             if isinstance(feature_value,list):
                 if feature=="distToEnemyPacman":
                     for i in range(len(feature_value)):
+                        if not feature_value[i]:
+                            print "featurevalue[i] was 0", feature, feature_value
+                            continue
                         utility+=6./feature_value[i] * weights[feature]
                 else:
                     for i in range(len(feature_value)):
@@ -411,8 +414,36 @@ class RealAgent(CaptureAgent):
             return self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[enemyIndex])
         else:
             #list of all distances that have prob>=.5
-            dists=[prob*self.getMazeDistance(self.getMyPos(gameState), pos)
-                   for pos, prob in self.getmDistribs(enemyIndex) if prob>=.5]
+            dists=[self.getMazeDistance(self.getMyPos(gameState), pos)
+                   for pos, prob in self.getmDistribs(enemyIndex).items() if prob>=.5]
+            if len(dists)==0:
+                bestPos= max(self.getmDistribs(enemyIndex).items(),
+                           key= lambda x : x[1])
+                return self.getMazeDistance(self.getMyPos(gameState), bestPos)
+            # dists=[]
+            # maxProb=0
+            # maxProbPos=None
+            # for pos, prob in self.getmDistribs(enemyIndex).items():
+            #     if prob>=.5:
+            #         try:
+            #             x,y=pos
+            #
+            #         except TypeError:
+            #             print("pos not iterable")
+            #             print pos
+            #         try:
+            #             x, y=self.getMyPos(gameState)
+            #         except TypeError:
+            #             print "myPos not iterable"
+            #         dists.append(self.getMazeDistance(pos, self.getMyPos(gameState)))
+            #     else:
+            #         if prob>=maxProb:
+            #             maxProbPos=pos
+            # if len(dists)==0:
+            #     print "no good estimate, returning:", maxProbPos
+            #     if not maxProbPos:
+            #         pass
+            #     return maxProbPos
             return sum(dists)/len(dists)
 
 
@@ -493,7 +524,7 @@ class RealAgent(CaptureAgent):
 
         for pos in self.legalPositions:
             #if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
-            if beliefs[pos] > 0 and util.manhattanDistance(myPos, pos)>SIGHT_RANGE:
+            if beliefs[pos] > 0:
                 newPosDist = self.getPositionDistribution(agentIndex, pos, gameState)
                 for position, prob in newPosDist.items():
                     possiblePositions[position] += prob * beliefs[pos]
