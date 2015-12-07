@@ -285,10 +285,12 @@ class RealAgent(CaptureAgent):
             if not feature_value or not weights[feature]:
                 continue
             if isinstance(feature_value,list):
-                for i in range(len(feature_value)):
-                    utility += feature_value[i] * weights[feature][i]
-            elif feature=="distToEnemyPacman":
-                utility+=6./feature_value * weights[feature]
+                if feature=="distToEnemyPacman":
+                    for i in range(len(feature_value)):
+                        utility+=6./feature_value[i] * weights[feature]
+                else:
+                    for i in range(len(feature_value)):
+                        utility += feature_value[i] * weights[feature]
             elif feature=="foodDist":
                 utility+=15./feature_value*weights[feature]
             elif feature=="distToNearestCapsule":
@@ -350,10 +352,10 @@ class RealAgent(CaptureAgent):
         features["distToEnemyPacman"]=[]
         features["numEnemyGhost"]=0
         features["distToEnemyGhost"]=0
-        for i, enemy in enumerate(enemies):
+        for i, enemy in zip(self.getOpponents(gameState), enemies):
             if enemy.isPacman:
                 features["numEnemyPacmen"]+=1
-                features["distToEnemyPacman"].append((i, self.getDistanceToEnemy(gameState, i)))
+                features["distToEnemyPacman"].append(self.getDistanceToEnemy(gameState, i))
 
             else:
                 features["numEnemyGhost"]+=1
@@ -368,7 +370,7 @@ class RealAgent(CaptureAgent):
         features["scaredEnemyMovesRemaining"] = self.getEnemyAgentScaredMovesRemaining(gameState)
         features["foodEatenBySelf"]=self.getFoodEatenBySelf(gameState)
         features["enemyPacmanFood"]=[]
-        for i, _ in features["distToEnemyPacman"]:
+        for i in self.getOpponents(gameState):
             features["enemyPacmanFood"]=self.getFoodEatenByEnemyAgent(gameState, i)
         features["distToHome"]=self.getDistanceToHomeSide(gameState)
 
