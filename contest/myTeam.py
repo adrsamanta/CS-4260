@@ -226,10 +226,11 @@ class RealAgent(CaptureAgent):
         bestActionSequence = [gameState.getLegalActions(self.index)]
         bestActionSequenceUtility = None
         #make sure this does a deep copy
-        enemy_belief_states = list(self.data.mDistribs)
+        #enemy_belief_states = list(self.data.mDistribs)
+        currGameStateFeatures = self.getFeatures(gameState)
         #named tuple for readability
-        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState enemy_belief_states utility')
-        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, enemy_belief_states, 0), 0))
+        State = namedtuple('State', 'agentIndex actions visitedInActionSequence currGameState currGameStateFeatures utility')
+        toVisit.push((State(agentIndex, actions, visitedInSequence, gameState, currGameStateFeatures, 0), 0))
         #using a constant of .75 seconds for now
         while time.time() - start_time < .75 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
@@ -242,41 +243,58 @@ class RealAgent(CaptureAgent):
                 if debug:
                     #print("curr state actions: ", curr_state.actions)
                     print("next action: ", next_action)
-
-                new_actions = list(curr_state.actions)
+                if len(curr_state.actions) > 0 and isinstance(curr_state.actions[0], list):
+                    print("curr state actions: ", curr_state.actions)
+                    print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
+                    print("next action: ", next_action)
+                new_actions = [action for action in curr_state.actions]
                 new_actions.append(next_action)
 
                 #update enemy belief states based on move
                 #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
                 #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
-                enemy_belief_states = []
+                curr_state_features = curr_state.currGameStateFeatures
                 #I dont think this dictionary works because all state objects will be different
                 #Either need to define a new dictionary class that compares internal values of states
                 #Or store more specific information in the dictionary - such as index positions
+                next_state_features = self.getFeatures(next_game_state)
                 if next_game_state in visited:
                     state_utility = visited[next_game_state]
                 else:
-                    state_utility = self.Utility(next_game_state)
+                    state_utility = self.Utility(next_game_state, next_state_features)
                     visited[next_game_state] = state_utility
                 #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
                 #need a way to calculate upper and lower bound
-                if lowerBound < state_utility < upperBound:
+                if self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
                     total_utility = state_utility + curr_utility
                     if debug:
                         print("new actions: ", new_actions, " utility: ", total_utility)
                     if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
                         bestActionSequenceUtility = total_utility/len(new_actions)
                         bestActionSequence = new_actions
-                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, enemy_belief_states, total_utility), total_utility))
+                    toVisit.push((State(agentIndex, new_actions, visitedInSequence.add(next_action), next_game_state, next_state_features, total_utility), total_utility))
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
         print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0]
 
+    #Doing a recalculation of minimum distance to food here - we can get rid of this later
+    def estimatedUtilityWillIncrease(self, curr_state_features, next_state_features):
+        if self.offensive:
+            return next_state_features["foodDist"] < curr_state_features["foodDist"]
+        if next_state_features["numEnemyPacmen"] == 0:
+            return True
+        if curr_state_features["numEnemyPacmen"] == 0:
+            return False
+        for i in range(min(len(curr_state_features["distToEnemyPacman"]),len(next_state_features["distToEnemyPacman"]))):
+            if next_state_features["distToEnemyPacman"][i] < curr_state_features["distToEnemyPacman"][i]:
+                return True
+        return False
 
-    def Utility(self, gameState):
 
-        features = self.getFeatures(gameState)
+    def Utility(self, gameState, features):
+
+        #features = self.getFeatures(gameState)
         weights = self.getWeights(features, gameState)
         if len(features)!=len(weights):
             print("AWKO TACO")
