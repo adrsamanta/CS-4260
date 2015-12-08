@@ -449,6 +449,8 @@ class RealAgent(CaptureAgent):
                 utility+=6./feature_value * weights[feature]
             elif feature=="distToHome":
                 utility+=4./feature_value*weights[feature]
+            elif feature=="distToNearestTeammate":
+                utility+=2./feature_value*weights[feature]
             else:
                 if feature.lower().find("dist")!=-1:
                     print feature, "not captured for special"
@@ -499,6 +501,8 @@ class RealAgent(CaptureAgent):
         weights["scaredEnemyMovesRemaining"]=0
         weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
+
+        weights["distToNearestTeammate"] = -2
         #weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         weights["distToHome"] = getDistToHomeDistrib()
         if not self.offensive and features["numEnenmyPacmen"]>0:
@@ -558,8 +562,12 @@ class RealAgent(CaptureAgent):
         for i in self.getOpponents(gameState):
             features["enemyPacmanFood"]=self.getFoodEatenByEnemyAgent(gameState, i)
         features["distToHome"]=self.getDistanceToHomeSide(gameState)
+        features["distToNearestTeammate"] = self.getDistToNearestTeammate(gameState)
 
         return features
+
+    def getDistToNearestTeammate(self, gameState):
+        return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), gameState.getAgentState(agent).getPosition()) for agent in self.getTeam(gameState) if agent != self.index])
 
     def getDistToNearestCapsule(self, gameState):
         try:
