@@ -477,15 +477,18 @@ class RealAgent(CaptureAgent):
         def getDistToHomeDistrib(weights2):
             if weights2["foodEatenBySelf"]==0:
                 return 0
-
-            if self.getScore(gameState)<0:
+            if features["scaredEnemyMovesRemaining"]>(features["distToHome"]+3):
+                return 0
+            elif self.getScore(gameState)<0:
                 #we losing
                 if features["foodEatenBySelf"]>2:
 
                     return -4
                 elif features["foodEatenBySelf"]>0:
                     return -2
-            elif features["foodEatenBySelf"]>=3:
+            elif self.getScore(gameState)>4:
+                return -.75*features["foodEatenBySelf"]
+            elif features["foodEatenBySelf"]>3:
                 return -1.5*features["foodEatenBySelf"]
             else:
                 return -1*features["foodEatenBySelf"]
