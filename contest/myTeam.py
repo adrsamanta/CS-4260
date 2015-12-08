@@ -399,7 +399,8 @@ class RealAgent(CaptureAgent):
             if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
                 bestActionSequenceUtility = avg_utility
                 bestActionSequence = state.actions
-        print "bestActionSequence:", bestActionSequence
+        if not self.offensive:
+            print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0], bestActionSequenceUtility
 
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
@@ -422,6 +423,8 @@ class RealAgent(CaptureAgent):
         weights = self.getWeights(features, gameState)
         if len(features)!=len(weights):
             print("AWKO TACO")
+            print weights.keys()
+            print("numEne")
             for key in features.keys():
                 if key not in weights:
                     print key
@@ -505,7 +508,7 @@ class RealAgent(CaptureAgent):
         weights["distToNearestTeammate"] = -2
         #weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         weights["distToHome"] = getDistToHomeDistrib(weights)
-        if not self.offensive and features["numEnenmyPacmen"]>0:
+        if not self.offensive and features["numEnemyPacmen"]>0:
             weights["distToHome"]+=1
         if weights["distToHome"]<-3:
             weights["foodDist"]=0
