@@ -504,7 +504,7 @@ class RealAgent(CaptureAgent):
 
         weights["distToNearestTeammate"] = -2
         #weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
-        weights["distToHome"] = getDistToHomeDistrib()
+        weights["distToHome"] = getDistToHomeDistrib(weights)
         if not self.offensive and features["numEnenmyPacmen"]>0:
             weights["distToHome"]+=1
         if weights["distToHome"]<-3:
