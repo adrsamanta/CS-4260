@@ -133,7 +133,6 @@ class TeamData:
 
         self.borderDistances={}
         self.calcBorderDistances(gameState)
-        #self.consideredStates = {}
 
     def calcBorderDistances(self, gameState):
         grid = gameState.getWalls()
@@ -190,6 +189,8 @@ class RealAgent(CaptureAgent):
 
         self.legalPositions=self.data.legalPositions
         self.offensive = self.data.getOffensive()
+        self.previousPosition = None
+        self.repeatedPosition = 0
         #set up distribution list that will hold belief distributions for agents
 
     def chooseAction(self, gameState):
@@ -231,7 +232,7 @@ class RealAgent(CaptureAgent):
                 print "moved toward enemy"
                 print "newpos=", newPos
                 print "utility=", utility
-
+        self.previousPosition = self.getMyPos(gameState)
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
@@ -298,8 +299,8 @@ class RealAgent(CaptureAgent):
                 repeated_state = True
             for next_action in legal_actions:
                 st = time()
-                if next_action=="Stop":
-                    continue
+                # if next_action=="Stop":
+                #     continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
                 my_pos = self.getMyPos(next_game_state)
                 if repeated_state or my_pos not in curr_state.visitedInSequence:
@@ -357,6 +358,8 @@ class RealAgent(CaptureAgent):
                     else:
                         #s = time()
                         state_utility = self.Utility(next_game_state, next_state_features)
+                        if self.previousPosition and my_pos == self.previousPosition:
+                            state_utility = .9**self.repeatedPosition * state_utility
                         #print "Calculating utility takes ", time() - s, " seconds"
                         visited[next_game_state] = state_utility
                     # if next_state_features["foodEatenBySelf"]:
@@ -401,6 +404,12 @@ class RealAgent(CaptureAgent):
             if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
                 bestActionSequenceUtility = avg_utility
                 bestActionSequence = state.actions
+                next_pos = state.visitedInSequence[1]
+        if next_pos == self.previousPosition:
+            self.repeatedPosition += 1
+            print("***repeated position***")
+        else:
+            self.repeatedPosition = 0
         if not self.offensive:
             print "bestActionSequence:", bestActionSequence
         return bestActionSequence[0], bestActionSequenceUtility
@@ -442,7 +451,7 @@ class RealAgent(CaptureAgent):
                             #we ate a pacman, add utility for this
                             utility+=6*weights[feature]
                             continue
-                        utility+=6./feature_value[i] * weights[feature]
+                        utility+=8./feature_value[i] * weights[feature]
                 else:
                     for i in range(len(feature_value)):
                         utility += feature_value[i] * weights[feature]
@@ -455,7 +464,7 @@ class RealAgent(CaptureAgent):
             elif feature=="distToHome":
                 utility+=4./feature_value*weights[feature]
             elif feature=="distToNearestTeammate":
-                utility+=2./feature_value*weights[feature]
+                utility+=3./feature_value*weights[feature]
             else:
                 if feature.lower().find("dist")!=-1:
                     print feature, "not captured for special"
@@ -483,7 +492,6 @@ class RealAgent(CaptureAgent):
             if self.getScore(gameState)<0:
                 #we losing
                 if features["foodEatenBySelf"]>2:
-
                     return -4
                 elif features["foodEatenBySelf"]>0:
                     return -2
@@ -493,13 +501,13 @@ class RealAgent(CaptureAgent):
                 return -1*features["foodEatenBySelf"]
 
         weights = util.Counter()
-        weights["foodDist"] = 3 if self.offensive else 2
-        weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
+        weights["foodDist"] = 1 if features["distToEnemyGhost"] == 1 and features["scaredMovesRemaining"] > 2 else max(4-features["distToEnemyGhost"], .5) if self.offensive else 2
+        weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]> 2 else 3
         weights["numEnemyPacmen"] = 0
-        weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
+        weights["distToEnemyPacman"] = 2 if self.offensive else 4 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         weights["numEnemyGhost"] = 0
         weights["distToEnemyGhost"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
-                    if 0< features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"])
+                    if 0 < features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else 4 if features["distToEnemyGhost"] < 2 else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"] + 2)
         weights["score"] = .5
         weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
@@ -507,18 +515,29 @@ class RealAgent(CaptureAgent):
         weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
 
-        weights["distToNearestTeammate"] = -2
+        weights["distToNearestTeammate"] = -3
         #weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
         weights["distToHome"] = getDistToHomeDistrib(weights)
         if not self.offensive and features["numEnemyPacmen"]>0:
-            weights["distToHome"]+=1
+            try:
+                weights["distToHome"]+=1
+            except:
+                weights["distToHome"]=1
         if weights["distToHome"]<-3:
             weights["foodDist"]=0
             weights["foodEatenBySelf"]=0
             weights["distToNearestCapsule"]=0
         elif weights["distToHome"]<=-2:
-            weights["foodDist"]-=1
-            weights["foodEatenBySelf"]-=1
+            try:
+                weights["foodDist"]-=1
+            except:
+                weights["foodDist"]=-1
+            try:
+                weights["foodEatenBySelf"]-=1
+            except:
+                weights["foodEatenBySelf"]=-1
+        if features["distToEnemyPacman"] <= 2:
+            weights["distToHome"] -= 1
 
         return weights
 
