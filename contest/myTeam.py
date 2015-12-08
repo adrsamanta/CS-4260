@@ -209,7 +209,10 @@ class RealAgent(CaptureAgent):
         self.knownEnemies={}
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
-
+        if self.getScaredMovesRemaining(gameState)>2:
+            self.offensive=True
+        elif self.getScaredMovesRemaining(gameState)==1:
+            self.offensive=self.data.getOffensive()
         #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
         bestAction, utility= self.actionSearch(self.index, gameState)
@@ -261,7 +264,7 @@ class RealAgent(CaptureAgent):
         #do some quick thinking on this state first, check for obvious good moves
         for action in gameState.getLegalActions(self.index):
             newPos=game.Actions.getSuccessor(self.getMyPos(gameState), action)
-            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>3:
+            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and (min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>3 or self.getEnemyAgentScaredMovesRemaining(gameState)>3):
                 print "foodShort"
                 return action, 0
             if self.onMySide(gameState, newPos) and self.getFoodEatenBySelf(gameState)>0:
@@ -343,7 +346,7 @@ class RealAgent(CaptureAgent):
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
-                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6 and self.getEnemyAgentScaredMovesRemaining(gameState)==0:
+                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6 and self.getEnemyAgentScaredMovesRemaining(gameState)==0 and not gameState.getAgentState(self.index).isPacman:
                         #continue, we're too close to an enemy ghost
                         print "too close to ghost circuit"
                         continue
@@ -497,7 +500,7 @@ class RealAgent(CaptureAgent):
         weights["foodDist"] = 3 if self.offensive else 2
         weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
         weights["numEnemyPacmen"] = 0
-        weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
+        weights["distToEnemyPacman"] = 2 if self.offensive else 4 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         if features["scaredMovesRemaining"] ==0:
             if 5>features["enemyPacmanFood"]>=3:
                 weights["distToEnemyPacman"]+=2
