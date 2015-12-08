@@ -492,11 +492,12 @@ class RealAgent(CaptureAgent):
         weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 2 if self.offensive else 3 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
-        if 5>features["enemyPacmanFood"]>=3:
-            weights["distToEnemyPacman"]+=2
-        elif features["distToEnemyPacman"]>=5:
-            weights["distToEnemyPacman"]+=3
-            weights["foodDist"]-=1
+        if features["scaredMovesRemaining"] ==0:
+            if 5>features["enemyPacmanFood"]>=3:
+                weights["distToEnemyPacman"]+=2
+            elif features["distToEnemyPacman"]>=5:
+                weights["distToEnemyPacman"]+=3
+                weights["foodDist"]-=1
         weights["numEnemyGhost"] = 0
         weights["distToEnemyGhost"] = 0 if not gameState.getAgentState(self.index).isPacman else 1 \
                     if 0< features["scaredEnemyMovesRemaining"] <= features["distToEnemyGhost"] else getEnemyGhostDistanceDistrib(features["distToEnemyGhost"])
