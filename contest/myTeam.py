@@ -214,18 +214,19 @@ class RealAgent(CaptureAgent):
         self.displayDistributionsOverPositions(self.data.mDistribs)
         bestAction, utility= self.actionSearch(self.index, gameState)
         newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
+        currFeatures=self.getFeatures(gameState)
+        nextGameState=gameState.generateSuccessor(self.index, bestAction)
+        nextFeatures=self.getFeatures(nextGameState)
+        currUtility=self.Utility(gameState, currFeatures)
+        nextUtility=self.Utility(nextGameState, nextFeatures)
         for i in self.getOpponents(gameState):
+
             if i in self.knownEnemies and self.knownEnemies[i]==newPos:
                 self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
             elif i in self.knownEnemies and \
                             self.getMazeDistance(newPos, self.knownEnemies[i])<self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[i])\
                             and not gameState.getAgentState(i).isPacman:
                 print "moved toward enemy"
-                nextGameState=gameState.generateSuccessor(self.index, bestAction)
-                currFeatures=self.getFeatures(gameState)
-                nextFeatures=self.getFeatures(nextGameState)
-                currUtility=self.Utility(gameState, currFeatures)
-                nextUtility=self.Utility(nextGameState, nextFeatures)
                 print "newpos=", newPos
                 print "utility=", utility
 
@@ -238,7 +239,7 @@ class RealAgent(CaptureAgent):
         #dictionary to keep track of visited spots so we can look up their utility in constant time
         visited = dict()
         #set to keep track of
-        visitedInSequence = []
+        visitedInSequence = [self.getMyPos(gameState)]
         #queue of action states to visit
         toVisit = util.Queue()
         actions = []
@@ -247,10 +248,16 @@ class RealAgent(CaptureAgent):
         lowerBound = -99999
 
         #save mDistribs so it can be modified below without losing the distribution
-        oldmDistribs=list(self.data.mDistribs)
+        #oldmDistribs=list(self.data.mDistribs)
         #start time so we can terminate before 1 second time limit
         start_time = time()
         debug = False
+
+
+        currGameStateFeatures = self.getFeatures(gameState)
+        currGameStateWeights = self.getWeights(currGameStateFeatures, gameState)
+        closestHomeAction=None
+        closestHomeDistance=5000
         #do some quick thinking on this state first, check for obvious good moves
         for action in gameState.getLegalActions(self.index):
             newPos=game.Actions.getSuccessor(self.getMyPos(gameState), action)
@@ -264,12 +271,13 @@ class RealAgent(CaptureAgent):
                 print "eat enemy short"
                 return action, 0
 
+
         #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
         #make sure this does a deep copy
         #enemy_belief_states = list(self.data.mDistribs)
-        currGameStateFeatures = self.getFeatures(gameState)
+
 
         maxSearchDepth = 0
         consideredStates = []
@@ -335,10 +343,10 @@ class RealAgent(CaptureAgent):
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
-                    # if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6:
-                    #     #continue, we're too close to an enemy ghost
-                    #     print "too close to ghost circuit"
-                    #     continue
+                    if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6 and self.getEnemyAgentScaredMovesRemaining(gameState)==0:
+                        #continue, we're too close to an enemy ghost
+                        print "too close to ghost circuit"
+                        continue
 
 
 
@@ -374,7 +382,7 @@ class RealAgent(CaptureAgent):
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
         #TODO: error check for when there are no capsules
-        self.data.mDistribs=oldmDistribs
+        #self.data.mDistribs=oldmDistribs
         try:
             print "average search time: ", total_search_time/numberofsearches
             print "number of states considered: ", numberofsearches
@@ -461,6 +469,22 @@ class RealAgent(CaptureAgent):
             else:
                 return 0
 
+        def getDistToHomeDistrib(weights2):
+            if weights2["foodEatenBySelf"]==0:
+                return 0
+
+            if self.getScore(gameState)<0:
+                #we losing
+                if features["foodEatenBySelf"]>2:
+
+                    return -4
+                elif features["foodEatenBySelf"]>0:
+                    return -2
+            elif features["foodEatenBySelf"]>=3:
+                return -1.5*features["foodEatenBySelf"]
+            else:
+                return -1*features["foodEatenBySelf"]
+
         weights = util.Counter()
         weights["foodDist"] = 3 if self.offensive else 2
         weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
@@ -475,7 +499,18 @@ class RealAgent(CaptureAgent):
         weights["scaredEnemyMovesRemaining"]=0
         weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
-        weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
+        #weights["distToHome"] = max(-1*features["foodEatenBySelf"], -5) if features["distToHome"] < features["movesRemaining"] else -5 #Tweak value later
+        weights["distToHome"] = getDistToHomeDistrib()
+        if not self.offensive and features["numEnenmyPacmen"]>0:
+            weights["distToHome"]+=1
+        if weights["distToHome"]<-3:
+            weights["foodDist"]=0
+            weights["foodEatenBySelf"]=0
+            weights["distToNearestCapsule"]=0
+        elif weights["distToHome"]<=-2:
+            weights["foodDist"]-=1
+            weights["foodEatenBySelf"]-=1
+
         return weights
 
 
@@ -527,10 +562,10 @@ class RealAgent(CaptureAgent):
         return features
 
     def getDistToNearestCapsule(self, gameState):
-        if gameState.isOnRedTeam(self.index):
-            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getRedCapsules()])
-        else:
-            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in gameState.getBlueCapsules()])
+        try:
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in self.getCapsules(gameState)])
+        except ValueError:
+            return 0
 
     def getScaredMovesRemaining(self, gameState):
         return gameState.getAgentState(self.index).scaredTimer
