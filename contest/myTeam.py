@@ -224,18 +224,21 @@ class RealAgent(CaptureAgent):
         nextWeight=self.getWeights(nextFeatures, nextGameState)
 
         print "offensive?", self.offensive
-        print "currWeights=", currWeight
-        print "currFeatures=", currFeatures
-        #print "nextWeights=", nextWeight
-        currUtility=self.Utility(gameState, currFeatures)
-        nextUtility=self.Utility(nextGameState, nextFeatures)
-        print "currUtility", currUtility
-        print "nextUtility", nextUtility
-        enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
-        if len(enemyPac)>0:
-            enemyPac=enemyPac[0]
-            print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
-
+        if not self.offensive:
+            print "currWeights=", currWeight
+            print "currFeatures=", currFeatures
+            #print "nextWeights=", nextWeight
+            print "curUtility: "
+            currUtility=self.Utility(gameState, currFeatures, True)
+            print "\nnextUtil"
+            nextUtility=self.Utility(nextGameState, nextFeatures, True)
+            print "currUtility", currUtility
+            print "nextUtility", nextUtility
+            enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
+            if len(enemyPac)>0:
+                enemyPac=enemyPac[0]
+                print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
+            print "\n"
 
         # for i in self.getOpponents(gameState):
         #
@@ -318,6 +321,7 @@ class RealAgent(CaptureAgent):
                     continue
                 next_game_state = curr_state.currGameState.generateSuccessor(curr_state.agentIndex, next_action)
                 my_pos = self.getMyPos(next_game_state)
+
                 if repeated_state or my_pos not in curr_state.visitedInSequence:
                     new_visited = list(curr_state.visitedInSequence)
                     new_visited.append(my_pos)
@@ -355,6 +359,9 @@ class RealAgent(CaptureAgent):
                     #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
                     #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
                     curr_state_features = curr_state.currGameStateFeatures
+
+
+
                     #I dont think this dictionary works because all state objects will be different
                     #Either need to define a new dictionary class that compares internal values of states
                     #Or store more specific information in the dictionary - such as index positions
@@ -435,7 +442,7 @@ class RealAgent(CaptureAgent):
         return False
 
 
-    def Utility(self, gameState, features):
+    def Utility(self, gameState, features, debug=False):
 
         #features = self.getFeatures(gameState)
         weights = self.getWeights(features, gameState)
@@ -448,8 +455,12 @@ class RealAgent(CaptureAgent):
                     print key
         utility = 0
         for feature, feature_value in features.items():
+
             if not feature_value or not weights[feature]:
                 continue
+            if debug:
+                print "feature=", feature, "feature value=", feature_value
+                print "old utility=", utility
             if isinstance(feature_value,list):
                 if feature=="distToEnemyPacman":
                     for i in range(len(feature_value)):
@@ -476,7 +487,8 @@ class RealAgent(CaptureAgent):
                 if feature.lower().find("dist")!=-1:
                     print feature, "not captured for special"
                 utility += feature_value * weights[feature]
-
+            if debug:
+                print "new utility=", utility
         return utility
 
     #weight on a -5 to 5 scale
@@ -517,10 +529,9 @@ class RealAgent(CaptureAgent):
         weights["numEnemyPacmen"] = 0
         weights["distToEnemyPacman"] = 0 if features["numEnemyPacmen"]==0 else 2 if self.offensive else 4 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
         if features["scaredMovesRemaining"] ==0 and weights["distToEnemyPacman"]>0:
-
             if not self.offensive:
-                weights["foodDist"]-=1
-                weights["distToNearestCapsule"]-=1
+                weights["foodDist"]=0
+                weights["distToNearestCapsule"]=0
             if 5>features["enemyPacmanFood"]>=3:
                 weights["distToEnemyPacman"]+=2
             elif features["distToEnemyPacman"]>=5:
@@ -533,7 +544,7 @@ class RealAgent(CaptureAgent):
         weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
         weights["scaredEnemyMovesRemaining"]=.5
-        weights["foodEatenBySelf"] = 5
+        weights["foodEatenBySelf"] = 5 if self.offensive else 0 if weights["distToEnemyPacman"]>0 else 4
         weights["enemyPacmanFood"] = 0
 
         weights["distToNearestTeammate"] = -2
