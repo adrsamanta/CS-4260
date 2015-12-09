@@ -654,11 +654,24 @@ class RealAgent(CaptureAgent):
             if len(dists)==0:
                 try:
                     bestPos= max(self.getmDistribs(enemyIndex).items(),
-                           key= lambda x : x[1])
+                           key= lambda x : x[1])[0]
+                    while bestPos not in self.legalPositions:
+                        self.getmDistribs(enemyIndex).pop(bestPos)
+                        print "bestPos illegal?", bestPos
+                        bestPos= max(self.getmDistribs(enemyIndex).items(),
+                           key= lambda x : x[1])[0]
                 except ValueError:
-                    #:(
+                    print "VALUEERROR"
                     return 6
-                return self.getMazeDistance(self.getMyPos(gameState), bestPos[0])
+                try:
+                    return self.getMazeDistance(self.getMyPos(gameState), bestPos)
+                except Exception:
+                    print "EXCEPTION THROWN"
+
+                    print "legal pos?", bestPos in self.legalPositions
+                    print "wall?", gameState.hasWall(bestPos[0], bestPos[1])
+
+                    return 2
             # dists=[]
             # maxProb=0
             # maxProbPos=None
