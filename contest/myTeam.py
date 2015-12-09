@@ -220,18 +220,33 @@ class RealAgent(CaptureAgent):
         currFeatures=self.getFeatures(gameState)
         nextGameState=gameState.generateSuccessor(self.index, bestAction)
         nextFeatures=self.getFeatures(nextGameState)
+        currWeight=self.getWeights(currFeatures, gameState)
+        nextWeight=self.getWeights(nextFeatures, nextGameState)
+
+        print "offensive?", self.offensive
+        print "currWeights=", currWeight
+        print "currFeatures=", currFeatures
+        #print "nextWeights=", nextWeight
         currUtility=self.Utility(gameState, currFeatures)
         nextUtility=self.Utility(nextGameState, nextFeatures)
-        for i in self.getOpponents(gameState):
+        print "currUtility", currUtility
+        print "nextUtility", nextUtility
+        enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
+        if len(enemyPac)>0:
+            enemyPac=enemyPac[0]
+            print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
 
-            if i in self.knownEnemies and self.knownEnemies[i]==newPos:
-                self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
-            elif i in self.knownEnemies and \
-                            self.getMazeDistance(newPos, self.knownEnemies[i])<self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[i])\
-                            and not gameState.getAgentState(i).isPacman:
-                print "moved toward enemy"
-                print "newpos=", newPos
-                print "utility=", utility
+
+        # for i in self.getOpponents(gameState):
+        #
+        #     if i in self.knownEnemies and self.knownEnemies[i]==newPos:
+        #         self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
+        #     elif i in self.knownEnemies and \
+        #                     self.getMazeDistance(newPos, self.knownEnemies[i])<self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[i])\
+        #                     and not gameState.getAgentState(i).isPacman:
+        #         print "moved toward enemy"
+        #         print "newpos=", newPos
+        #         print "utility=", utility
 
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
@@ -497,11 +512,15 @@ class RealAgent(CaptureAgent):
                 return -1*features["foodEatenBySelf"]
 
         weights = util.Counter()
-        weights["foodDist"] = 3 if self.offensive else 2
+        weights["foodDist"] = 3 if self.offensive else 1
         weights["distToNearestCapsule"]= 1 if features["distToEnemyGhost"]>3 else 2
         weights["numEnemyPacmen"] = 0
-        weights["distToEnemyPacman"] = 2 if self.offensive else 4 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
-        if features["scaredMovesRemaining"] ==0:
+        weights["distToEnemyPacman"] = 0 if features["numEnemyPacmen"]==0 else 2 if self.offensive else 4 if features["distToEnemyPacman"] > features["scaredMovesRemaining"] else -3
+        if features["scaredMovesRemaining"] ==0 and weights["distToEnemyPacman"]>0:
+
+            if not self.offensive:
+                weights["foodDist"]-=1
+                weights["distToNearestCapsule"]-=1
             if 5>features["enemyPacmanFood"]>=3:
                 weights["distToEnemyPacman"]+=2
             elif features["distToEnemyPacman"]>=5:
@@ -513,7 +532,7 @@ class RealAgent(CaptureAgent):
         weights["score"] = .5
         weights["movesRemaining"] = 0
         weights["scaredMovesRemaining"] = 0
-        weights["scaredEnemyMovesRemaining"]=0
+        weights["scaredEnemyMovesRemaining"]=.5
         weights["foodEatenBySelf"] = 5
         weights["enemyPacmanFood"] = 0
 
