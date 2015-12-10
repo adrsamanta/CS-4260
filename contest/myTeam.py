@@ -236,8 +236,6 @@ class RealAgent(CaptureAgent):
         toVisit = util.Queue()
         actions = []
         #lower bound and upper bound set to arbitrary values for testing purposes
-        upperBound = 999999
-        lowerBound = -99999
 
         start_time = time()
         debug = False
