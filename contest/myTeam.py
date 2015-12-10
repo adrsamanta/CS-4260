@@ -191,17 +191,7 @@ class RealAgent(CaptureAgent):
         #set up distribution list that will hold belief distributions for agents
 
     def chooseAction(self, gameState):
-        #print(pos)
 
-        #get a list of actions
-        #update belieft distribution about enemy positions
-        #is anyone scared
-        #food far away from know enemies
-        #food close to enemies but near capsule
-        #if theres one action:  update belief distribution and take that action
-        #
-        #else calculate utility function for each action
-        #
         '''
         You should change this in your own agent.
         '''
@@ -213,7 +203,7 @@ class RealAgent(CaptureAgent):
             self.offensive=True
         elif self.getScaredMovesRemaining(gameState)==1:
             self.offensive=self.data.getOffensive()
-        #print "infer time: ", time()-startTime
+        ##print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
         bestAction, utility= self.actionSearch(self.index, gameState)
         newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
@@ -223,37 +213,18 @@ class RealAgent(CaptureAgent):
         currWeight=self.getWeights(currFeatures, gameState)
         nextWeight=self.getWeights(nextFeatures, nextGameState)
 
-        print "offensive?", self.offensive
+        #print "offensive?", self.offensive
         if not self.offensive:
-            print "currWeights=", currWeight
-            print "currFeatures=", currFeatures
-            #print "nextWeights=", nextWeight
-            print "curUtility: "
+
             currUtility=self.Utility(gameState, currFeatures, True)
-            print "\nnextUtil"
+
             nextUtility=self.Utility(nextGameState, nextFeatures, True)
-            print "currUtility", currUtility
-            print "nextUtility", nextUtility
+
             enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
             if len(enemyPac)>0:
                 enemyPac=enemyPac[0]
-                print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
-            print "\n"
-
-        # for i in self.getOpponents(gameState):
-        #
-        #     if i in self.knownEnemies and self.knownEnemies[i]==newPos:
-        #         self._setKnownPosDist(i, gameState.getInitialAgentPosition(i))
-        #     elif i in self.knownEnemies and \
-        #                     self.getMazeDistance(newPos, self.knownEnemies[i])<self.getMazeDistance(self.getMyPos(gameState), self.knownEnemies[i])\
-        #                     and not gameState.getAgentState(i).isPacman:
-        #         print "moved toward enemy"
-        #         print "newpos=", newPos
-        #         print "utility=", utility
 
         return bestAction
-        # return random.choice(gameState.getLegalActions(self.index))
-        #return self.offensiveReflex(gameState)
 
     def actionSearch(self, agentIndex, gameState):
         ##do a breadth first search until time runs out
@@ -268,9 +239,6 @@ class RealAgent(CaptureAgent):
         upperBound = 999999
         lowerBound = -99999
 
-        #save mDistribs so it can be modified below without losing the distribution
-        #oldmDistribs=list(self.data.mDistribs)
-        #start time so we can terminate before 1 second time limit
         start_time = time()
         debug = False
 
@@ -282,22 +250,22 @@ class RealAgent(CaptureAgent):
         #do some quick thinking on this state first, check for obvious good moves
         for action in gameState.getLegalActions(self.index):
             newPos=game.Actions.getSuccessor(self.getMyPos(gameState), action)
-            if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and (min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>3 or self.getEnemyAgentScaredMovesRemaining(gameState)>3):
-                print "foodShort"
-                return action, 0
+            try:
+                if self.getFood(gameState)[int(newPos[0])][int(newPos[1])] and (min([self.getDistanceToEnemy(gameState, i) for i in self.getOpponents(gameState)])>3 or self.getEnemyAgentScaredMovesRemaining(gameState)>3):
+                    #print "foodShort"
+                    return action, 0
+            except:
+                pass
             if self.onMySide(gameState, newPos) and self.getFoodEatenBySelf(gameState)>0:
-                print "home short"
+                #print "home short"
                 return action, 0
             if self.getScaredMovesRemaining(gameState)==0 and newPos in self.knownEnemies.values() and self.onMySide(gameState, newPos):
-                print "eat enemy short"
+                #print "eat enemy short"
                 return action, 0
 
 
-        #way to keep track of best action so far????
         bestActionSequence = gameState.getLegalActions(self.index)
         bestActionSequenceUtility = None
-        #make sure this does a deep copy
-        #enemy_belief_states = list(self.data.mDistribs)
 
 
         maxSearchDepth = 0
@@ -326,51 +294,18 @@ class RealAgent(CaptureAgent):
                     new_visited = list(curr_state.visitedInSequence)
                     new_visited.append(my_pos)
 
-                    #do inference on where enemy agents are
-                    # s = time()
-                    # for i in self.getOpponents(next_game_state):
-                    #     self.data.mDistribs[i]=self.positionMoveInfer(i, next_game_state, curr_state.mDistribs[i])
-                    # print "Opponen distribution inferences takes ", time() - s, " seconds"
-
-                    if debug:
-                        #print("curr state actions: ", curr_state.actions)
-                        print("next action: ", next_action)
-                    if len(curr_state.actions) > 0 and isinstance(curr_state.actions[0], list):
-                        print("curr state actions: ", curr_state.actions)
-                        print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
-                        print("next action: ", next_action)
                     new_actions = [action for action in curr_state.actions]
                     new_actions.append(next_action)
                     consideredStates.append(new_actions)
 
-                    # if len(new_actions) > maxSearchDepth:
-                    #     maxSearchDepth = len(new_actions)
-
-                    # if isinstance(next_action, list):
-                    #     print("next_action: ", next_action)
-                    #     print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
-
-                    # for action in new_actions:
-                    #     if isinstance(action, list):
-                    #         print("curr state actions: ", curr_state.actions)
-                    #         print("legal actions: ", curr_state.currGameState.getLegalActions(self.index))
-                    #         print("next action: ", next_action)
-                    #update enemy belief states based on move
-                    #Array index out of bounds exception thrown in getPositionDistribution so using dummy array instead
-                    #enemy_belief_states = [self.getPositionDistribution(i, next_game_state.getAgentPosition(self.index), next_game_state) for i in self.getOpponents(next_game_state)]
                     curr_state_features = curr_state.currGameStateFeatures
 
-
-
-                    #I dont think this dictionary works because all state objects will be different
-                    #Either need to define a new dictionary class that compares internal values of states
-                    #Or store more specific information in the dictionary - such as index positions
                     next_state_features = self.getFeatures(next_game_state)
 
                     #TODO: test the code below
                     if next_state_features["distToEnemyGhost"]<=len(new_actions) and next_game_state.getAgentState(self.index).isPacman and len(new_actions)<6 and self.getEnemyAgentScaredMovesRemaining(gameState)==0:
                         #continue, we're too close to an enemy ghost
-                        print "too close to ghost circuit"
+                        #print "too close to ghost circuit"
                         continue
 
 
@@ -378,54 +313,21 @@ class RealAgent(CaptureAgent):
                     if next_game_state in visited:
                         state_utility = visited[next_game_state]
                     else:
-                        #s = time()
                         state_utility = self.Utility(next_game_state, next_state_features)
-                        #print "Calculating utility takes ", time() - s, " seconds"
                         visited[next_game_state] = state_utility
-                    # if next_state_features["foodEatenBySelf"]:
-                    #     print "hallejueah!"
-                    #do we want to do the bounds check on just the utility of that state, or the state's utility + past_utility
-                    #need a way to calculate upper and lower bound
-                    #if (len(curr_state.actions) > 0 and state_utility > curr_utility) or self.estimatedUtilityWillIncrease(curr_state_features, next_state_features):
-                    #if not (new_visited.count(my_pos) > 2 and state_utility < 1.25 * curr_state.totalUtility):
-                    # print("visited in sequnce: ", curr_state.visitedInSequence)
-                    # print("my pos: ", my_pos)
-                    # print("my pos in visited: ", my_pos in curr_state.visitedInSequence)
-                    #if my_pos not in curr_state.visitedInSequence:
+
                     total_utility = state_utility + curr_state.totalUtility
-                    #consideredStates[my_pos] = total_utility/len(new_actions)
-                    if debug:
-                        print("new actions: ", new_actions, " utility: ", total_utility)
-                    # if not bestActionSequenceUtility or total_utility/len(new_actions) > bestActionSequenceUtility:
-                        # bestActionSequenceUtility = total_utility/len(new_actions)
-                        # bestActionSequence = new_actions
+
                     toVisit.push((State(agentIndex, new_actions, new_visited, next_game_state, next_state_features, total_utility, self.data.mDistribs), total_utility/len(new_actions)))
                     total_search_time += time() - st
                     numberofsearches += 1
-                # else:
-                #     print("actions pruned: ", new_actions)
-        #Currently first action in action sequence with the highest utility
-        #Should we remember the entire sequence to make later computations faster
-        #TODO: error check for when there are no capsules
-        #self.data.mDistribs=oldmDistribs
-        try:
-            print "average search time: ", total_search_time/numberofsearches
-            print "number of states considered: ", numberofsearches
-            print "max search depth", max(len(i) for i in consideredStates)
-        except Exception:
-            pass
-        # if maxSearchDepth < 5:
-        #     for seq in consideredStates:
-        #         print(seq)
-        #         print("\n\n")
-            # raw_input()
+
         while not toVisit.isEmpty():
             state, avg_utility = toVisit.pop()
             if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
                 bestActionSequenceUtility = avg_utility
                 bestActionSequence = state.actions
-        if not self.offensive:
-            print "bestActionSequence:", bestActionSequence
+
         return bestActionSequence[0], bestActionSequenceUtility
 
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
@@ -446,26 +348,17 @@ class RealAgent(CaptureAgent):
 
         #features = self.getFeatures(gameState)
         weights = self.getWeights(features, gameState)
-        if len(features)!=len(weights):
-            print("AWKO TACO")
-            print weights.keys()
-            print("numEne")
-            for key in features.keys():
-                if key not in weights:
-                    print key
+
         utility = 0
         for feature, feature_value in features.items():
 
             if not feature_value or not weights[feature]:
                 continue
-            if debug:
-                print "feature=", feature, "feature value=", feature_value
-                print "old utility=", utility
+
             if isinstance(feature_value,list):
                 if feature=="distToEnemyPacman":
                     for i in range(len(feature_value)):
                         if not feature_value[i]:
-                            print "featurevalue[i] was 0", feature, feature_value
                             #we ate a pacman, add utility for this
                             utility+=6*weights[feature]
                             continue
@@ -484,11 +377,7 @@ class RealAgent(CaptureAgent):
             elif feature=="distToNearestTeammate":
                 utility+=2./feature_value*weights[feature]
             else:
-                if feature.lower().find("dist")!=-1:
-                    print feature, "not captured for special"
                 utility += feature_value * weights[feature]
-            if debug:
-                print "new utility=", utility
         return utility
 
     #weight on a -5 to 5 scale
@@ -657,45 +546,16 @@ class RealAgent(CaptureAgent):
                            key= lambda x : x[1])[0]
                     while bestPos not in self.legalPositions:
                         self.getmDistribs(enemyIndex).pop(bestPos)
-                        print "bestPos illegal?", bestPos
+                        #print "bestPos illegal?", bestPos
                         bestPos= max(self.getmDistribs(enemyIndex).items(),
                            key= lambda x : x[1])[0]
                 except ValueError:
-                    print "VALUEERROR"
                     return 6
                 try:
                     return self.getMazeDistance(self.getMyPos(gameState), bestPos)
                 except Exception:
-                    print "EXCEPTION THROWN"
-
-                    print "legal pos?", bestPos in self.legalPositions
-                    print "wall?", gameState.hasWall(bestPos[0], bestPos[1])
 
                     return 2
-            # dists=[]
-            # maxProb=0
-            # maxProbPos=None
-            # for pos, prob in self.getmDistribs(enemyIndex).items():
-            #     if prob>=.5:
-            #         try:
-            #             x,y=pos
-            #
-            #         except TypeError:
-            #             print("pos not iterable")
-            #             print pos
-            #         try:
-            #             x, y=self.getMyPos(gameState)
-            #         except TypeError:
-            #             print "myPos not iterable"
-            #         dists.append(self.getMazeDistance(pos, self.getMyPos(gameState)))
-            #     else:
-            #         if prob>=maxProb:
-            #             maxProbPos=pos
-            # if len(dists)==0:
-            #     print "no good estimate, returning:", maxProbPos
-            #     if not maxProbPos:
-            #         pass
-            #     return maxProbPos
             return sum(dists)/len(dists)
 
 
@@ -732,10 +592,7 @@ class RealAgent(CaptureAgent):
     def positionDistanceInfer(self, agentIndex, gameState=None):
         if not gameState:
             gameState=self.getCurrentObservation()
-        #myState=gameState.getAgentState(self.index)
 
-        # noisyDistance = observation
-        # emissionModel = busters.getObservationDistribution(noisyDistance)
         myPos = self.getMyPos(gameState)
 
         noisyDistance = gameState.getAgentDistances()[agentIndex]
@@ -754,9 +611,6 @@ class RealAgent(CaptureAgent):
             #if this position is not on the side of the board the agent is currently on, then the agent isn't at this location
             elif self.onMySide(gameState, p) != gameState.getAgentState(agentIndex).isPacman:
                 allPossible[p]=0
-            #NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
-            #for p should be updated with that in mind, so this check is silly.
-            #elif gameState.getDistanceProb(trueDistance, noisyDistance)>0: #only do anything if there is any possibility of getting the given noisy distance from this true distance
             else:
                 allPossible[p]=beliefs[p]*gameState.getDistanceProb(trueDistance, noisyDistance)
 
@@ -857,73 +711,3 @@ class RealAgent(CaptureAgent):
                 #do inference based on distance
                 self.positionDistanceInfer(i)
 
-
-
-    ###### BEGIN OFFENSIVE CODE ##########
-    # def offensiveReflex(self, gameState):
-    #     actions = gameState.getLegalActions(self.index)
-    #     values = [self.evaluate(gameState, a) for a in actions]
-    #     # print 'eval time for agent %d: %.4f' % (self.index, time() - start)
-    #
-    #     maxValue = max(values)
-    #     bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-    #
-    #     foodLeft = len(self.getFood(gameState).asList())
-    #
-    #     if foodLeft <= 2:
-    #       bestDist = 9999
-    #       for action in actions:
-    #         successor = self.getSuccessor(gameState, action)
-    #         pos2 = successor.getAgentPosition(self.index)
-    #         dist = self.getMazeDistance(self.start,pos2)
-    #         if dist < bestDist:
-    #           bestAction = action
-    #           bestDist = dist
-    #       return bestAction
-    #
-    #     return random.choice(bestActions)
-    #
-    # def getSuccessor(self, gameState, action):
-    #     """
-    #     Finds the next successor which is a grid position (location tuple).
-    #     """
-    #     successor = gameState.generateSuccessor(self.index, action)
-    #     pos = successor.getAgentState(self.index).getPosition()
-    #     if pos != util.nearestPoint(pos):
-    #       # Only half a grid position was covered
-    #       return successor.generateSuccessor(self.index, action)
-    #     else:
-    #       return successor
-    #
-    # def evaluate(self, gameState, action):
-    #     """
-    #     Computes a linear combination of features and feature weights
-    #     """
-    #     features = self.getFeatures(gameState, action)
-    #     weights = self.getWeights(gameState, action)
-    #     return features * weights
-    #
-    # def getFeatures(self, gameState, action):
-    #     features = util.Counter()
-    #     successor = self.getSuccessor(gameState, action)
-    #     foodList = self.getFood(successor).asList()
-    #     features['successorScore'] = -len(foodList)#self.getScore(successor)
-    #
-    #     # Compute distance to the nearest food
-    #
-    #     if len(foodList) > 0: # This should always be True,  but better safe than sorry
-    #       myPos = successor.getAgentState(self.index).getPosition()
-    #       minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
-    #       features['distanceToFood'] = minDistance
-    #     return features
-    #
-    # def getWeights(self, gameState, action):
-    #     return {'successorScore': 100, 'distanceToFood': -1}
-    #
-    # ############END OFFENSIVE REFLEX CODE#################
-
-
-
-
-
-    ############END OFFENSIVE REFLEX CODE#################
