@@ -303,7 +303,7 @@ class HardwiredAgent(CaptureAgent):
                 return HardwiredAgent.HLA.goHome
             elif features["enemyPacmanFood"]>features["score"]>0:
                 return HardwiredAgent.HLA.chaseEnemy
-            elif features["distToNearestCapsule"]<4 or features["score"]+features["foodEatenBySelf"]<0:
+            elif self.getCapsules(gameState) and (features["distToNearestCapsule"]<4 or features["score"]+features["foodEatenBySelf"]<0):
                 return HardwiredAgent.HLA.eatCapsule
             else:
                 return HardwiredAgent.HLA.eatFood
@@ -327,12 +327,32 @@ class HardwiredAgent(CaptureAgent):
         return hla(self, gameState)
 
     def genExclusionZones(self, gamestate):
-        pass
+        #list of enemy ghosts we need to avoid
+        enemy_ghosts = [g for g in self.getOpponents(gamestate) if not gamestate.getAgentState(g).isPacman]
+        my_pos = self.getMyPos(gamestate)
+        zone = set()
+        # easy way to get all enemy spaces is to get the keys of border distances
+        for space in self.data.borderDistances.keys():
+            #check each enemy
+            for enemy in enemy_ghosts:
+                #if this spot is closer to the enemy then it is to us, then don't go there
+                #currently is very extreme rule, might need to be tuned in the future
+                if self.getMazeDistance(my_pos, space)>self.getPosDistToEnemy(space, enemy):
+                    zone.add(space)
+                    break
+        # TODO: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
 
+        return zone
     #called when the agent should procede home
     def goHomeAction(self, gamestate):
+        print "Going home"
         #find shortest path to home
         #generate exclusion zones around the enemies, find shortest path that doesn't go through an exclusion zone
+
+        #options for exclusion zones:
+
+            #if distance from pos to self>distance from pos to enemy
+            #distance from pos to self==distance from pos to enemy
 
         ez = self.genExclusionZones(gamestate)
 
@@ -349,6 +369,7 @@ class HardwiredAgent(CaptureAgent):
 
     #called when the agent should chase the enemy pacman
     def chasePacmanAction(self, gameState):
+        print "Chasing pacman"
         #just make it blindly chase the enemy for now, work on more intelligent chasing later
         #
         target = None
@@ -365,13 +386,25 @@ class HardwiredAgent(CaptureAgent):
 
 
 
-    #called when the agent should attemp to eat a capsule
-    def eatCapsuleAction(self, gs):
-        pass
+    #called when the agent should attempt to eat a capsule
+    def eatCapsuleAction(self, gamestate):
+        print "Eating capsule"
+        ez = self.genExclusionZones(gamestate)
+        prob = PacmanPosSearch(self.getMyPos(gamestate), self.getCapsules(gamestate), gamestate, ez)
+        #TODO: add a heuristic using dist to nearest capsule
+        path = search.astar(prob) #use a-star, null heuristic
+        return path[0]
+        #TODO: consider adding option to abandon this choice if it's shitty
 
     #called when the agent should find some food to eat and eat it
-    def eatFoodAction(self, gs):
-        pass
+    def eatFoodAction(self, gamestate):
+        print "Eating some dope ass food"
+        ez = self.genExclusionZones(gamestate)
+
+        prob = PacmanPosSearch(self.getMyPos(gamestate), self.getFood(gamestate), gamestate, ez)
+
+        path = search.astar(prob)
+        return path[0]
 
 
     def Utility(self, gameState, features, debug=False):
