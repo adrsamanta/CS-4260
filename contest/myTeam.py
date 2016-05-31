@@ -153,6 +153,12 @@ class TeamData:
         self.offensive = not self.offensive
         return self.offensive
 
+class HLA:
+    goHome=1
+    runAway=2
+    eatFood=3
+    chaseEnemy=4
+    eatCapsule=5
 
 class RealAgent(CaptureAgent):
     def registerInitialState(self, gameState):
@@ -188,6 +194,7 @@ class RealAgent(CaptureAgent):
 
         self.legalPositions=self.data.legalPositions
         self.offensive = self.data.getOffensive()
+
         #set up distribution list that will hold belief distributions for agents
 
     def chooseAction(self, gameState):
@@ -216,29 +223,29 @@ class RealAgent(CaptureAgent):
         #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
         bestAction, utility= self.actionSearch(self.index, gameState)
-        newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
-        currFeatures=self.getFeatures(gameState)
-        nextGameState=gameState.generateSuccessor(self.index, bestAction)
-        nextFeatures=self.getFeatures(nextGameState)
-        currWeight=self.getWeights(currFeatures, gameState)
-        nextWeight=self.getWeights(nextFeatures, nextGameState)
-
-        print "offensive?", self.offensive
-        if not self.offensive:
-            print "currWeights=", currWeight
-            print "currFeatures=", currFeatures
-            #print "nextWeights=", nextWeight
-            print "curUtility: "
-            currUtility=self.Utility(gameState, currFeatures, True)
-            print "\nnextUtil"
-            nextUtility=self.Utility(nextGameState, nextFeatures, True)
-            print "currUtility", currUtility
-            print "nextUtility", nextUtility
-            enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
-            if len(enemyPac)>0:
-                enemyPac=enemyPac[0]
-                print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
-            print "\n"
+        # newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
+        # currFeatures=self.getFeatures(gameState)
+        # nextGameState=gameState.generateSuccessor(self.index, bestAction)
+        # nextFeatures=self.getFeatures(nextGameState)
+        # currWeight=self.getWeights(currFeatures, gameState)
+        # nextWeight=self.getWeights(nextFeatures, nextGameState)
+        #
+        # print "offensive?", self.offensive
+        # if not self.offensive:
+        #     print "currWeights=", currWeight
+        #     print "currFeatures=", currFeatures
+        #     #print "nextWeights=", nextWeight
+        #     print "curUtility: "
+        #     currUtility=self.Utility(gameState, currFeatures, True)
+        #     print "\nnextUtil"
+        #     nextUtility=self.Utility(nextGameState, nextFeatures, True)
+        #     print "currUtility", currUtility
+        #     print "nextUtility", nextUtility
+        #     enemyPac=[i for i in self.getOpponents(gameState) if gameState.getAgentState(i).isPacman]
+        #     if len(enemyPac)>0:
+        #         enemyPac=enemyPac[0]
+        #         print "closer to enemy pacman?", self.getDistanceToEnemy(gameState, enemyPac)>self.getDistanceToEnemy(nextGameState, enemyPac)
+        #     print "\n"
 
         # for i in self.getOpponents(gameState):
         #
@@ -254,6 +261,29 @@ class RealAgent(CaptureAgent):
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
+
+    def pickHighLevelAction(self, gameState):
+        features=self.getFeatures(gameState)
+
+        if self.offensive:
+            if features["foodEatenBySelf"]>4 or (features["score"]<0 and features["foodEatenBySelf"]+features["score"]>=0):
+                return HLA.goHome
+            elif features["enemyPacmanFood"]>features["score"]>0:
+                return HLA.chaseEnemy
+            elif features["distToNearestCapsule"]<4 or features["score"]+features["foodEatenBySelf"]<0:
+                return HLA.eatCapsule
+            else:
+                return HLA.eatFood
+        else:
+            if features["enemyPacmanFood"]>1:
+                return HLA.chaseEnemy
+            else:
+                return HLA.eatFood
+            #TODO: add shadow enemy action
+
+        # if features["distToEnemyGhost"]<3 and not gameState.getAgentState(self.index).isPacman:
+        #     #need to run
+        #     return
 
     def actionSearch(self, agentIndex, gameState):
         ##do a breadth first search until time runs out
@@ -309,8 +339,12 @@ class RealAgent(CaptureAgent):
         #using a constant of .75 seconds for now
         total_search_time = 0
         numberofsearches = 0
+        terminal_search  = []
         while time() - start_time < .85 and not toVisit.isEmpty():
             curr_state, curr_utility = toVisit.pop()
+            if len(curr_state.actions) > 5:
+                terminal_search.append(curr_state)
+                continue
             repeated_state = False
             legal_actions = curr_state.currGameState.getLegalActions(self.index)
             if len(legal_actions) == 1:
@@ -419,13 +453,23 @@ class RealAgent(CaptureAgent):
         #         print(seq)
         #         print("\n\n")
             # raw_input()
-        while not toVisit.isEmpty():
-            state, avg_utility = toVisit.pop()
-            if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
-                bestActionSequenceUtility = avg_utility
-                bestActionSequence = state.actions
-        if not self.offensive:
-            print "bestActionSequence:", bestActionSequence
+        # while not toVisit.isEmpty():
+        #     state, avg_utility = toVisit.pop()
+        #     if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
+        #         bestActionSequenceUtility = avg_utility
+        #         bestActionSequence = state.actions
+        # if not self.offensive:
+        #     print "bestActionSequence:", bestActionSequence
+        if terminal_search:
+            bestState = max(terminal_search, key = lambda x : x.totalUtility)
+            bestActionSequence = bestState.actions
+            bestActionSequenceUtility = bestState.totalUtility
+        else:
+            while not toVisit.isEmpty():
+                state, avg_utility = toVisit.pop()
+                if not bestActionSequenceUtility or avg_utility > bestActionSequenceUtility:
+                    bestActionSequenceUtility = avg_utility
+                    bestActionSequence = state.actions
         return bestActionSequence[0], bestActionSequenceUtility
 
     #Doing a recalculation of minimum distance to food here - we can get rid of this later
