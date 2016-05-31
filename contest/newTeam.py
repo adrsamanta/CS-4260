@@ -157,16 +157,12 @@ class TeamData:
 #class that implements SearchProblem from search.py
 #getCostOfActions method not implemented because it doesn't make sense for this class as most actions don't have cost
 class PacmanPosSearch(search.SearchProblem):
-    def __init__(self, start_state, goal_states, gamestate):
+    def __init__(self, start_state, goal_states, gamestate, exclusion_zones):
         self.start = start_state
         self.goals = goal_states
         self.walls = gamestate.getWalls()
-        self.high_cost_states = util.Counter() #for use to cause certain states to be less desireable
+        self.ez = exclusion_zones
 
-    #set the cost of getting to the given state to the provided value
-    #cost is set at 5 by default
-    def addHighCostState(self, state, cost=5):
-        self.high_cost_states[state]=cost
 
     def isGoalState(self, state):
         return state in self.goals
@@ -179,8 +175,9 @@ class PacmanPosSearch(search.SearchProblem):
         #for each legal action, create a state rep of it and add it to successors
         for action in legal_actions:
             next_state = game.Actions.getSuccessor(state, action)
-            #see documentation on getSuccessors for details
-            successors.append((next_state, action, self.high_cost_states[next_state]))
+            if next_state not in self.ez:
+                #see documentation on getSuccessors for details
+                successors.append((next_state, action, 1))
 
         return successors
 
@@ -329,28 +326,26 @@ class HardwiredAgent(CaptureAgent):
         #hla is a method in this class, call it, providing self as the implicit parameter
         return hla(self, gameState)
 
+    def genExclusionZones(self, gamestate):
+        pass
 
     #called when the agent should procede home
-    def goHomeAction(self, gs):
+    def goHomeAction(self, gamestate):
         #find shortest path to home
-        #check if nearest enemy is far enough away that we will make it home safely
-            #how defined? check to ensure is always further than distance to home?
-        #need to write pathfinding that will find paths that balance getting home quickly and not getting too close to enemy
-        #since a similar problem will occur in the food action, should really write an algorithm that can find a path from cpos to one of a given list of positions
-        #
-        #
+        #generate exclusion zones around the enemies, find shortest path that doesn't go through an exclusion zone
 
-        #to find paths, bring in search.py algorithms
-        #use UCS, define a search problem in the pacman world, and then to avoid finding same path twice
-        #just modify the search problem slightly to make the second to last state on the prev path very expensive, so it should find a second path
-        #if it doesn't that means there is no other good path, and we should just use that one.
-        #TODO: modify the algorithm to check for goal on generation
-        #TODO: modify algorithm to return list of states as well (since that's what we want)
+        ez = self.genExclusionZones(gamestate)
 
-        #alt plan to explore: assign cost to mean something, possibly a combination of distance travelled, distance to enemy, and distance to home
+        goHomeProb = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate, ez)
 
 
-        pass
+        def heuristic(state, problem):
+            return self.data.borderDistances[state]
+
+        path = search.astar(goHomeProb, heuristic)
+        return path[0] #return the first action in the path
+
+
 
     #called when the agent should chase the enemy pacman
     def chasePacmanAction(self, gameState):
@@ -843,3 +838,12 @@ class HardwiredAgent(CaptureAgent):
 
 
     ############END OFFENSIVE REFLEX CODE#################
+
+
+    #turns a list of actions originating at the current position into a list of positions
+    def actionsToPos(self, actions, gamestate):
+        positions = [self.getMyPos(gamestate)]
+        for action in actions:
+            positions.append(game.Actions.getSuccessor(positions[-1], action))
+
+        return positions
