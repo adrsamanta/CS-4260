@@ -134,10 +134,10 @@ class TeamData:
         grid = gameState.getWalls()
         # since board size is even, but 0 indexed, width/2 is the boarder column on blue, so update halfway to match
         if not self.mAgent.red:
-            halfway = (agent.getFood(gameState).width / 2) - 1
+            halfway = (agent.getFood(gameState).width / 2)
             range_x = range(halfway)
         else:
-            halfway = (agent.getFood(gameState).width / 2)
+            halfway = (agent.getFood(gameState).width / 2) -1
             range_x = range(halfway, grid.width)
         self.borderPositions = [(halfway, y) for y in range(agent.getFood(gameState).height) if
                                 not gameState.hasWall(halfway, y)]
@@ -297,9 +297,12 @@ class HardwiredAgent(CaptureAgent):
         #         print "moved toward enemy"
         #         print "newpos=", newPos
         #         print "utility=", utility
-        if gameState.data.timeleft<1150:
-            raw_input("Action="+bestAction)
-            print "\n"
+        if gameState.data.timeleft<1100:
+            # raw_input("Action="+bestAction)
+            # print "\n"
+            pass
+        print "Action="+bestAction
+        print "\n"
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
@@ -311,7 +314,7 @@ class HardwiredAgent(CaptureAgent):
             print "offensive"
             if features["foodEatenBySelf"]>4 or (features["score"]<0 and features["foodEatenBySelf"]+features["score"]>=0):
                 return HLA.goHome
-            elif features["enemyPacmanFood"]>features["score"]>0:
+            elif max(features["enemyPacmanFood"])>features["score"]>0 and self.getScaredMovesRemaining(gameState)==0:
                 return HLA.chaseEnemy
             elif self.getCapsules(gameState) and (features["distToNearestCapsule"]<4 or features["score"]+features["foodEatenBySelf"]<0):
                 return HLA.eatCapsule
@@ -347,7 +350,7 @@ class HardwiredAgent(CaptureAgent):
         #list of enemy ghosts we need to avoid
         enemy_ghosts = [g for g in self.getOpponents(gamestate) if
                         not gamestate.getAgentState(g).isPacman and
-                        self.getEnemyAgentScaredMovesRemaining(gamestate)==0] #if ghosts are scared, no exclusion zone
+                        gamestate.getAgentState(g).scaredTimer==0] #if ghosts are scared, no exclusion zone
         my_pos = self.getMyPos(gamestate)
         zone = set()
         if not enemy_ghosts: #short circuit if no enemy ghosts
@@ -359,7 +362,7 @@ class HardwiredAgent(CaptureAgent):
                 #if this spot is closer to the enemy then it is to us, then don't go there
                 #currently is very extreme rule, might need to be tuned in the future
                 #TUNE 1: only matters if space is nearer than 7, otherwise initial search has no food it can go to
-                if self.getMazeDistance(my_pos, space)>=self.getPosDistToEnemy(space, enemy) and self.getMazeDistance(my_pos, space)<7:
+                if self.getPosDistToEnemy(space, enemy) <= self.getMazeDistance(my_pos, space) < 7:
                     zone.add(space)
                     break
         # TODO: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
@@ -386,6 +389,7 @@ class HardwiredAgent(CaptureAgent):
 
         path = search.astar(goHomeProb, heuristic)
         if not path:
+            path=[game.Directions.STOP] #just wait, because can't go anywhere
             #hollup
             pass
         return path[0] #return the first action in the path
@@ -626,7 +630,7 @@ class HardwiredAgent(CaptureAgent):
         return gameState.getAgentState(self.index).scaredTimer
 
     def getEnemyAgentScaredMovesRemaining(self, gameState):
-        return gameState.getAgentState(self.getOpponents(gameState)[0]).scaredTimer
+        return max([gameState.getAgentState(o).scaredTimer for o in self.getOpponents(gameState)])
 
     def getFoodEatenByEnemyAgent(self, gameState, agentIndex):
         return gameState.getAgentState(agentIndex).numCarrying
