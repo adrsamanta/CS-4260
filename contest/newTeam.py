@@ -127,25 +127,27 @@ class TeamData:
         #should be all legal positions
         self.legalPositions = gameState.data.layout.walls.asList(key = False)
         self.defendFoodGrid=[]
-        halfway = agent.getFood(gameState).width / 2
-        self.borderPositions=[(halfway, y) for y in range(agent.getFood(gameState).height) if not gameState.hasWall(halfway, y)]
+
+
 
         self.borderDistances={}
-        self.calcBorderDistances(gameState)
-        #self.consideredStates = {}
-
-    def calcBorderDistances(self, gameState):
         grid = gameState.getWalls()
-        halfway = grid.width / 2
+        # since board size is even, but 0 indexed, width/2 is the boarder column on blue, so update halfway to match
         if not self.mAgent.red:
+            halfway = (agent.getFood(gameState).width / 2) - 1
             range_x = range(halfway)
         else:
+            halfway = (agent.getFood(gameState).width / 2)
             range_x = range(halfway, grid.width)
-
+        self.borderPositions = [(halfway, y) for y in range(agent.getFood(gameState).height) if
+                                not gameState.hasWall(halfway, y)]
         for x in range_x:
             for y in range(grid.height):
                 if not grid[x][y]:
-                    self.borderDistances[(x, y)]= min(self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.borderPositions)
+                    self.borderDistances[(x, y)] = min(
+                        self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.borderPositions)
+
+                    #self.consideredStates = {}
 
     def logFood(self, gameState):
         self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
@@ -186,13 +188,11 @@ class PacmanPosSearch(search.SearchProblem):
 
 
 class HLA:
+    #due to dependency issues, set the members of HLA inside HardwiredAgent
+    pass
     # set each of the HLAs to the method in HardwiredAgent that defines the behavior in that case
     # calling each of these should just require passing in the current object as the self parameter
-    goHome = HardwiredAgent.goHomeAction
-    runAway = None
-    eatFood = HardwiredAgent.eatFoodAction
-    chaseEnemy = HardwiredAgent.chasePacmanAction
-    eatCapsule = HardwiredAgent.eatCapsuleAction
+
 
 class HardwiredAgent(CaptureAgent):
 
@@ -208,6 +208,12 @@ class HardwiredAgent(CaptureAgent):
 
         IMPORTANT: This method may run for at most 15 seconds.
         """
+        #set the members of HLA to the HardwiredAgent methods
+        HLA.goHome = HardwiredAgent.goHomeAction
+        HLA.runAway = None
+        HLA.eatFood = HardwiredAgent.eatFoodAction
+        HLA.chaseEnemy = HardwiredAgent.chasePacmanAction
+        HLA.eatCapsule = HardwiredAgent.eatCapsuleAction
 
         '''
         Make sure you do not delete the following line. If you would like to
@@ -255,7 +261,7 @@ class HardwiredAgent(CaptureAgent):
         #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
 
-        bestAction = self.pickHighLevelAction(gameState)
+        bestAction = self.actionSearch(gameState)
         # bestAction, utility= self.actionSearch(self.index, gameState)
         # newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
         # currFeatures=self.getFeatures(gameState)
@@ -291,7 +297,9 @@ class HardwiredAgent(CaptureAgent):
         #         print "moved toward enemy"
         #         print "newpos=", newPos
         #         print "utility=", utility
-
+        if gameState.data.timeleft<1150:
+            raw_input("Action="+bestAction)
+            print "\n"
         return bestAction
         # return random.choice(gameState.getLegalActions(self.index))
         #return self.offensiveReflex(gameState)
@@ -300,6 +308,7 @@ class HardwiredAgent(CaptureAgent):
         features=self.getFeatures(gameState)
 
         if self.offensive:
+            print "offensive"
             if features["foodEatenBySelf"]>4 or (features["score"]<0 and features["foodEatenBySelf"]+features["score"]>=0):
                 return HLA.goHome
             elif features["enemyPacmanFood"]>features["score"]>0:
@@ -309,9 +318,16 @@ class HardwiredAgent(CaptureAgent):
             else:
                 return HLA.eatFood
         else:
-            if features["enemyPacmanFood"]>1 and self.getScaredMovesRemaining(gameState)==0:
+            print "defensive"
+            if max(features["enemyPacmanFood"])>=1 and self.getScaredMovesRemaining(gameState)==0:
                 #TODO: fix scared moves remaining timer
                 return HLA.chaseEnemy
+            elif self.getCapsules(gameState) and (
+                    features["distToNearestCapsule"] < 4 or features["score"] + features["foodEatenBySelf"] < 0):
+                return HLA.eatCapsule
+            elif features["foodEatenBySelf"] > 4 or (
+                    features["score"] < 0 and features["foodEatenBySelf"] + features["score"] >= 0):
+                return HLA.goHome
             else:
                 return HLA.eatFood
             #TODO: add shadow enemy action
@@ -320,7 +336,7 @@ class HardwiredAgent(CaptureAgent):
         #     #need to run
         #     return
 
-    def actionSearch(self, agentIndex, gameState):
+    def actionSearch(self, gameState):
         #lock in hla, then find best way to accomplish that given the positions of the enemy ghosts
         hla = self.pickHighLevelAction(gameState)
 
@@ -329,16 +345,21 @@ class HardwiredAgent(CaptureAgent):
 
     def genExclusionZones(self, gamestate):
         #list of enemy ghosts we need to avoid
-        enemy_ghosts = [g for g in self.getOpponents(gamestate) if not gamestate.getAgentState(g).isPacman]
+        enemy_ghosts = [g for g in self.getOpponents(gamestate) if
+                        not gamestate.getAgentState(g).isPacman and
+                        self.getEnemyAgentScaredMovesRemaining(gamestate)==0] #if ghosts are scared, no exclusion zone
         my_pos = self.getMyPos(gamestate)
         zone = set()
+        if not enemy_ghosts: #short circuit if no enemy ghosts
+            return zone
         # easy way to get all enemy spaces is to get the keys of border distances
         for space in self.data.borderDistances.keys():
             #check each enemy
             for enemy in enemy_ghosts:
                 #if this spot is closer to the enemy then it is to us, then don't go there
                 #currently is very extreme rule, might need to be tuned in the future
-                if self.getMazeDistance(my_pos, space)>self.getPosDistToEnemy(space, enemy):
+                #TUNE 1: only matters if space is nearer than 7, otherwise initial search has no food it can go to
+                if self.getMazeDistance(my_pos, space)>=self.getPosDistToEnemy(space, enemy) and self.getMazeDistance(my_pos, space)<7:
                     zone.add(space)
                     break
         # TODO: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
@@ -364,24 +385,33 @@ class HardwiredAgent(CaptureAgent):
             return self.data.borderDistances[state]
 
         path = search.astar(goHomeProb, heuristic)
+        if not path:
+            #hollup
+            pass
         return path[0] #return the first action in the path
 
 
 
     #called when the agent should chase the enemy pacman
+    #precondition: At least 1 enemy is a pacman
     def chasePacmanAction(self, gameState):
         print "Chasing pacman"
         #just make it blindly chase the enemy for now, work on more intelligent chasing later
         #
-        target = None
-        if len(self.knownEnemies)==1:
-            #only 1 enemy has known position, chase that one
-            target = self.knownEnemies.keys()[0]
-        else:
-            target = max(self.getOpponents(gameState), key = lambda x : self.getFoodEatenByEnemyAgent(gameState, x))
+        # target = None
+        # this fails if we only know the position of the enemy ghost. Easier to just chase the more full enemy pacman
+        # if len(self.knownEnemies)==1:
+        #     #only 1 enemy has known position, chase that one
+        #     target = self.knownEnemies.keys()[0]
+
+
+        # else:
+
+        target = max(self.getOpponents(gameState), key = lambda x : self.getFoodEatenByEnemyAgent(gameState, x))
         #dictionary where next positions are the keys, and the
         nextPosl = {game.Actions.getSuccessor(self.getMyPos(gameState), action) : action for action in gameState.getLegalActions(self.index)}
         bestPos = min(nextPosl.keys(), key = lambda x : self.getPosDistToEnemy(x, target))
+        #TODO: Make this not stupidly run  into enemy ghosts
         return nextPosl[bestPos] #return the action corresponding to bestpos
 
 
@@ -394,6 +424,9 @@ class HardwiredAgent(CaptureAgent):
         prob = PacmanPosSearch(self.getMyPos(gamestate), self.getCapsules(gamestate), gamestate, ez)
         #TODO: add a heuristic using dist to nearest capsule
         path = search.astar(prob) #use a-star, null heuristic
+        if not path:
+            #hollup
+            pass
         return path[0]
         #TODO: consider adding option to abandon this choice if it's shitty
 
@@ -405,7 +438,11 @@ class HardwiredAgent(CaptureAgent):
         prob = PacmanPosSearch(self.getMyPos(gamestate), self.getFood(gamestate).asList(), gamestate, ez)
 
         path = search.astar(prob)
-        return path[0]
+        if path == None:
+            #no good food to eat, just go home
+            return HLA.goHome(self, gamestate)
+        else:
+            return path[0]
 
 
     def Utility(self, gameState, features, debug=False):
@@ -570,7 +607,7 @@ class HardwiredAgent(CaptureAgent):
         features["foodEatenBySelf"]=self.getFoodEatenBySelf(gameState)
         features["enemyPacmanFood"]=[]
         for i in self.getOpponents(gameState):
-            features["enemyPacmanFood"]=self.getFoodEatenByEnemyAgent(gameState, i)
+            features["enemyPacmanFood"].append(self.getFoodEatenByEnemyAgent(gameState, i))
         features["distToHome"]=self.getDistanceToHomeSide(gameState)
         features["distToNearestTeammate"] = self.getDistToNearestTeammate(gameState)
 
@@ -667,10 +704,11 @@ class HardwiredAgent(CaptureAgent):
     def onMySide(self, gameState, pos):
         halfway = gameState.data.food.width / 2
         #copied from halfgrid
+        #see comment on halfway in agent data
         if self.red:
             return pos[0] < halfway
         else:
-            return pos[0] > halfway
+            return pos[0] >=halfway
 
 
     #does inference based on noisy distance to agents and updates opponents distributions
