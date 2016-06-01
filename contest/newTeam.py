@@ -385,11 +385,20 @@ class HardwiredAgent(CaptureAgent):
 
 
         def heuristic(state, problem):
-            return self.data.borderDistances[state]
+            if state in self.data.borderDistances:
+                return self.data.borderDistances[state]
+            else:
+                return 0
+
 
         path = search.astar(goHomeProb, heuristic)
         if not path:
-            path=[game.Directions.STOP] #just wait, because can't go anywhere
+            #relax the exclusion zones to only be where the enemy is
+            ghp2 = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate, list(self.knownEnemies.values()))
+            path = search.astar(ghp2, heuristic)
+            if not path:
+                #still no path home, probably screwed, just stop and pray
+                path=[game.Directions.STOP] #just wait, because can't go anywhere
             #hollup
             pass
         return path[0] #return the first action in the path
@@ -659,25 +668,29 @@ class HardwiredAgent(CaptureAgent):
             dists = [self.getMazeDistance(cpos, pos)
                      for pos, prob in self.getmDistribs(enemyIndex).items() if prob >= .5]
             if len(dists) == 0:
-                try:
-                    bestPos = max(self.getmDistribs(enemyIndex).items(),
-                                  key=lambda x: x[1])[0]
-                    while bestPos not in self.legalPositions:
-                        self.getmDistribs(enemyIndex).pop(bestPos)
-                        print "bestPos illegal?", bestPos
-                        bestPos = max(self.getmDistribs(enemyIndex).items(),
-                                      key=lambda x: x[1])[0]
-                except ValueError:
-                    print "VALUEERROR"
-                    return 6
-                try:
-                    return self.getMazeDistance(cpos, bestPos)
-                except Exception:
-                    print "EXCEPTION THROWN"
-                    print "bestpos=", bestPos
-                    print "legal pos?", bestPos in self.legalPositions
+                #TODO: fix this to be less silly
+                return 31
 
-                    return 2
+
+                # try:
+                #     bestPos = max(self.getmDistribs(enemyIndex).items(),
+                #                   key=lambda x: x[1])[0]
+                #     while bestPos not in self.legalPositions:
+                #         self.getmDistribs(enemyIndex).pop(bestPos)
+                #         print "bestPos illegal?", bestPos
+                #         bestPos = max(self.getmDistribs(enemyIndex).items(),
+                #                       key=lambda x: x[1])[0]
+                # except ValueError:
+                #     print "VALUEERROR"
+                #     return 6
+                # try:
+                #     return self.getMazeDistance(cpos, bestPos)
+                # except Exception:
+                #     print "EXCEPTION THROWN"
+                #     print "bestpos=", bestPos
+                #     print "legal pos?", bestPos in self.legalPositions
+                #
+                #     return 2
 
             return sum(dists) / len(dists)
     #gets the distance from me to an enemy specified by enemy index
@@ -702,6 +715,10 @@ class HardwiredAgent(CaptureAgent):
         return self.data.mDistribs[agentIndex]
 
     def setDistrib(self, agentIndex, newDistrib):
+        i=3
+        for p in newDistrib.keys():
+            if p not in self.data.legalPositions:
+                pass
         self.data.mDistribs[agentIndex]=newDistrib
 
     #checks which side of the board a given position is, returns true if its my side
