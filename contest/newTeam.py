@@ -138,11 +138,11 @@ class TeamData:
         grid = gameState.getWalls()
         halfway = grid.width / 2
         if not self.mAgent.red:
-            xrange = range(halfway)
+            range_x = range(halfway)
         else:
-            xrange = range(halfway, grid.width)
+            range_x = range(halfway, grid.width)
 
-        for x in xrange:
+        for x in range_x:
             for y in range(grid.height):
                 if not grid[x][y]:
                     self.borderDistances[(x, y)]= min(self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.borderPositions)
@@ -184,15 +184,17 @@ class PacmanPosSearch(search.SearchProblem):
     def getStartState(self):
         return self.start
 
+
+class HLA:
+    # set each of the HLAs to the method in HardwiredAgent that defines the behavior in that case
+    # calling each of these should just require passing in the current object as the self parameter
+    goHome = HardwiredAgent.goHomeAction
+    runAway = None
+    eatFood = HardwiredAgent.eatFoodAction
+    chaseEnemy = HardwiredAgent.chasePacmanAction
+    eatCapsule = HardwiredAgent.eatCapsuleAction
+
 class HardwiredAgent(CaptureAgent):
-    class HLA:
-        #set each of the HLAs to the method in HardwiredAgent that defines the behavior in that case
-        #calling each of these should just require passing in the current object as the self parameter
-        goHome = HardwiredAgent.goHomeAction
-        runAway = None
-        eatFood = HardwiredAgent.eatFoodAction
-        chaseEnemy = HardwiredAgent.chasePacmanAction
-        eatCapsule = HardwiredAgent.eatCapsuleAction
 
     def registerInitialState(self, gameState):
         """
@@ -242,9 +244,6 @@ class HardwiredAgent(CaptureAgent):
         #
         #else calculate utility function for each action
         #
-        '''
-        You should change this in your own agent.
-        '''
         #startTime=time()
         self.knownEnemies={} #enemy position, key is enemy index
         self.data.logFood(gameState)
@@ -255,7 +254,9 @@ class HardwiredAgent(CaptureAgent):
             self.offensive=self.data.getOffensive()
         #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-        bestAction, utility= self.actionSearch(self.index, gameState)
+
+        bestAction = self.pickHighLevelAction(gameState)
+        # bestAction, utility= self.actionSearch(self.index, gameState)
         # newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
         # currFeatures=self.getFeatures(gameState)
         # nextGameState=gameState.generateSuccessor(self.index, bestAction)
@@ -300,19 +301,19 @@ class HardwiredAgent(CaptureAgent):
 
         if self.offensive:
             if features["foodEatenBySelf"]>4 or (features["score"]<0 and features["foodEatenBySelf"]+features["score"]>=0):
-                return HardwiredAgent.HLA.goHome
+                return HLA.goHome
             elif features["enemyPacmanFood"]>features["score"]>0:
-                return HardwiredAgent.HLA.chaseEnemy
+                return HLA.chaseEnemy
             elif self.getCapsules(gameState) and (features["distToNearestCapsule"]<4 or features["score"]+features["foodEatenBySelf"]<0):
-                return HardwiredAgent.HLA.eatCapsule
+                return HLA.eatCapsule
             else:
-                return HardwiredAgent.HLA.eatFood
+                return HLA.eatFood
         else:
             if features["enemyPacmanFood"]>1 and self.getScaredMovesRemaining(gameState)==0:
                 #TODO: fix scared moves remaining timer
-                return HardwiredAgent.HLA.chaseEnemy
+                return HLA.chaseEnemy
             else:
-                return HardwiredAgent.HLA.eatFood
+                return HLA.eatFood
             #TODO: add shadow enemy action
 
         # if features["distToEnemyGhost"]<3 and not gameState.getAgentState(self.index).isPacman:
@@ -401,7 +402,7 @@ class HardwiredAgent(CaptureAgent):
         print "Eating some dope ass food"
         ez = self.genExclusionZones(gamestate)
 
-        prob = PacmanPosSearch(self.getMyPos(gamestate), self.getFood(gamestate), gamestate, ez)
+        prob = PacmanPosSearch(self.getMyPos(gamestate), self.getFood(gamestate).asList(), gamestate, ez)
 
         path = search.astar(prob)
         return path[0]
