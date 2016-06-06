@@ -29,6 +29,7 @@ from capture import GameState, SIGHT_RANGE
 from collections import namedtuple
 from time import time
 import search
+from AgentExternals import TeamData, PacmanPosSearch
 
 #################
 # Team creation #
@@ -107,84 +108,6 @@ class DummyAgent(CaptureAgent):
 
 
 
-class TeamData:
-    RedData=None
-    BlueData=None
-    def __init__(self, gameState, team, opps, agent):
-        self.team=team
-        self.mAgent=agent
-        self.offensive = True
-        self.mDistribs=[None]*gameState.getNumAgents()
-        #opps=self.team[0].getOpponents(gameState)
-        for i in range(gameState.getNumAgents()):
-            if i in opps:
-                dist=util.Counter()
-                oppPos=gameState.getInitialAgentPosition(i)
-                dist[oppPos]=1.0
-                self.mDistribs[i]=dist
-            else:
-                self.mDistribs[i]=None
-        #should be all legal positions
-        self.legalPositions = gameState.data.layout.walls.asList(key = False)
-        self.defendFoodGrid=[]
-
-
-
-        self.borderDistances={}
-        grid = gameState.getWalls()
-        # since board size is even, but 0 indexed, width/2 is the boarder column on blue, so update halfway to match
-        if not self.mAgent.red:
-            halfway = (agent.getFood(gameState).width / 2)
-            range_x = range(halfway)
-        else:
-            halfway = (agent.getFood(gameState).width / 2) -1
-            range_x = range(halfway, grid.width)
-        self.borderPositions = [(halfway, y) for y in range(agent.getFood(gameState).height) if
-                                not gameState.hasWall(halfway, y)]
-        for x in range_x:
-            for y in range(grid.height):
-                if not grid[x][y]:
-                    self.borderDistances[(x, y)] = min(
-                        self.mAgent.getMazeDistance((x, y), borderPos) for borderPos in self.borderPositions)
-
-                    #self.consideredStates = {}
-
-    def logFood(self, gameState):
-        self.defendFoodGrid.append(self.mAgent.getFoodYouAreDefending(gameState))
-
-    def getOffensive(self):
-        self.offensive = not self.offensive
-        return self.offensive
-
-#class that implements SearchProblem from search.py
-#getCostOfActions method not implemented because it doesn't make sense for this class as most actions don't have cost
-class PacmanPosSearch(search.SearchProblem):
-    def __init__(self, start_state, goal_states, gamestate, exclusion_zones):
-        self.start = start_state
-        self.goals = goal_states
-        self.walls = gamestate.getWalls()
-        self.ez = exclusion_zones
-
-
-    def isGoalState(self, state):
-        return state in self.goals
-
-    def getSuccessors(self, state):
-        #create a config representing current game state
-        curr = game.Configuration(state, game.Directions.STOP) #set curr direction to stop, shouldn't be needed
-        successors = []
-        legal_actions = game.Actions.getPossibleActions(curr, self.walls)
-        #for each legal action, create a state rep of it and add it to successors
-        for action in legal_actions:
-            next_state = game.Actions.getSuccessor(state, action)
-            if next_state not in self.ez:
-                #see documentation on getSuccessors for details
-                successors.append((next_state, action, 1))
-
-        return successors
-
-    def getStartState(self):
-        return self.start
 
 
 class HLA:
@@ -391,11 +314,11 @@ class HardwiredAgent(CaptureAgent):
                 return 0
 
 
-        path = search.astar(goHomeProb, heuristic)
+        path, _ = search.astar(goHomeProb, heuristic)
         if not path:
             #relax the exclusion zones to only be where the enemy is
             ghp2 = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate, list(self.knownEnemies.values()))
-            path = search.astar(ghp2, heuristic)
+            path, _ = search.astar(ghp2, heuristic)
             if not path:
                 #still no path home, probably screwed, just stop and pray
                 path=[game.Directions.STOP] #just wait, because can't go anywhere
@@ -436,7 +359,7 @@ class HardwiredAgent(CaptureAgent):
         ez = self.genExclusionZones(gamestate)
         prob = PacmanPosSearch(self.getMyPos(gamestate), self.getCapsules(gamestate), gamestate, ez)
         #TODO: add a heuristic using dist to nearest capsule
-        path = search.astar(prob) #use a-star, null heuristic
+        path, _ = search.astar(prob) #use a-star, null heuristic
         if not path:
             #hollup
             pass
@@ -447,10 +370,16 @@ class HardwiredAgent(CaptureAgent):
     def eatFoodAction(self, gamestate):
         print "Eating some dope ass food"
         ez = self.genExclusionZones(gamestate)
+        teammate_targets=set()
+        for teammate in self.getTeam(gamestate):
+            if teammate!=self.index:
+                teammate_targets.add(self.data.get_food_target(teammate))
 
-        prob = PacmanPosSearch(self.getMyPos(gamestate), self.getFood(gamestate).asList(), gamestate, ez)
+        goals = [pos for pos in self.getFood(gamestate).asList() if pos not in teammate_targets]
 
-        path = search.astar(prob)
+        prob = PacmanPosSearch(self.getMyPos(gamestate), goals, gamestate, ez)
+
+        path, target = search.astar(prob)
         if path == None:
             #no good food to eat, just go home
             return HLA.goHome(self, gamestate)

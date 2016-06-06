@@ -220,7 +220,7 @@ def aStarSearch(problem, heuristic=nullHeuristic):
         if cur_state not in visited:
             #check goal state when node is visited
             if problem.isGoalState(cur_state):
-                return actions
+                return actions, cur_state #return the found goal as well
             else:
                 visited.add(cur_state)
             
