@@ -92,27 +92,56 @@ class UtilAgen(CaptureAgent):
 
 
     def action_search(self, gamestate):
-        UTIL_DISCOUNT = .9
+        #how much to discount future utility by, so if a state is 3 in the future, its utility is UTIL_DISCOUNT**3 * calculated_utility
+        UTIL_DISCOUNT = .8
+
+        #maximum depth of search
+        MAX_SEARCH_DEPTH = 5
+        #queue that holds future states to visit
         toVisit = util.Queue()
-        #each item on toVisit is a tuple (starting action, gamestate, depth)
-        State = namedtuple("starting_action", "gamestate", "depth")
+        #each item on toVisit is a tuple (starting action, gamestate, beliefs, depth)
+        #beliefs is the belief distribution of enemy positions at that point
+        State = namedtuple("starting_action", "gamestate", "beliefs", "depth")
 
         action_utils = {}
+
+
         for action in gamestate.getLegalActions(self.index):
             newgs = gamestate.generateSuccessor(self.index, action)
-            toVisit.push(action, newgs, 0)
+            toVisit.push(State(action, gamestate, self.data.mDistribs, 0))
             action_utils[action]=[]
 
+        while not toVisit.isEmpty(): #while toVisit still has stuff in it
+            ns = toVisit.pop()
+            nsu = self.getUtility(ns.gamestate, ns.beliefs)
+            action_utils[ns.starting_action].append(nsu * UTIL_DISCOUNT**ns.depth)
+
+            #only explore further if doesn't excede max search depth
+            if ns.depth<MAX_SEARCH_DEPTH:
+                for action in ns.gamestate.getLegalActions(self.index):
+                    newgs = ns.gamestate.generateSuccessor(self.index, action)
+                    nsb = self.genNewBeliefs(ns.beliefs, ns.gamestate)
+                    toVisit.push(State(ns.starting_action, newgs, nsb, ns.depth+1))
+
+        #TODO: pick action based on highest average or highest sum?
+        best_action = max(action_utils.keys(), key = lambda x:  sum(action_utils[x])/len(action_utils[x]))
+
+        return best_action
 
 
+    #######################################
+    #        Belief manipulation?
+    #######################################
 
+    def genNewBeliefs(self, oldBeliefs, gamestate):
+        return {}
 
     #######################################
     #        Features/Weights
     #######################################
 
-    def getUtility(self, gamestate):
-        pass
+    def getUtility(self, gamestate, belief_distrib):
+        return 0
 
     def getWeights(self, gamestate):
         pass
@@ -132,8 +161,8 @@ class UtilAgen(CaptureAgent):
         return gameState.getAgentState(agentIndex).numCarrying
 
     # checks which side of the board a given position is, returns true if its my side
-    def onMySide(self, gameState, pos):
-        halfway = gameState.data.food.width / 2
+    def onMySide(self, pos):
+        halfway = self.getCurrentObservation().data.food.width / 2
         # copied from halfgrid
         # see comment on halfway in agent data
         if self.red:
@@ -192,7 +221,7 @@ class UtilAgen(CaptureAgent):
                 # agent would be visible if it were here, so its not here
                 allPossible[p] = 0
             # if this position is not on the side of the board the agent is currently on, then the agent isn't at this location
-            elif self.onMySide(gameState, p) != gameState.getAgentState(agentIndex).isPacman:
+            elif self.onMySide(p) != gameState.getAgentState(agentIndex).isPacman:
                 allPossible[p] = 0
             # NOTE: original code had the check below, but this isn't a good idea because if that prob is 0, the belief
             # for p should be updated with that in mind, so this check is silly.
@@ -213,7 +242,7 @@ class UtilAgen(CaptureAgent):
         myPos = self.getMyPos(gameState)
 
         possiblePositions = util.Counter()
-
+        #TODO: see if this can be made more efficient by iterating over beliefs.keys or something, to avoid checking stupid legal positions
         for pos in self.legalPositions:
             # if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
             if beliefs[pos] > 0:

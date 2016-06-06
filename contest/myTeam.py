@@ -279,7 +279,7 @@ class RealAgent(CaptureAgent):
                 return HLA.chaseEnemy
             else:
                 return HLA.eatFood
-            #TODO: add shadow enemy action
+
 
         # if features["distToEnemyGhost"]<3 and not gameState.getAgentState(self.index).isPacman:
         #     #need to run
@@ -440,7 +440,6 @@ class RealAgent(CaptureAgent):
                 #     print("actions pruned: ", new_actions)
         #Currently first action in action sequence with the highest utility
         #Should we remember the entire sequence to make later computations faster
-        #TODO: error check for when there are no capsules
         #self.data.mDistribs=oldmDistribs
         try:
             print "average search time: ", total_search_time/numberofsearches
