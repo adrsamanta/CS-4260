@@ -99,29 +99,41 @@ class UtilAgen(CaptureAgent):
         MAX_SEARCH_DEPTH = 5
         #queue that holds future states to visit
         toVisit = util.Queue()
-        #each item on toVisit is a tuple (starting action, gamestate, beliefs, depth)
+        #each item on toVisit is a tuple (starting action, gamestate, beliefs, depth, prev_action)
         #beliefs is the belief distribution of enemy positions at that point
-        State = namedtuple("starting_action", "gamestate", "beliefs", "depth")
+        #prev action is the action taken to get to this state, to avoid checking the immediately previous position again
+        State = namedtuple("State", ["starting_action", "gamestate", "beliefs", "depth", "prev_action"])
 
+        #dictionary to track the utility of each state spawned off each starting action
+        #action_utils[action] is a list of the utilities of all the states generated from this starting action
         action_utils = {}
 
-
+        #create initial states
         for action in gamestate.getLegalActions(self.index):
             newgs = gamestate.generateSuccessor(self.index, action)
-            toVisit.push(State(action, gamestate, self.data.mDistribs, 0))
-            action_utils[action]=[]
+            toVisit.push(State(action, newgs, self.data.mDistribs, 0, action))
+            action_utils[action]=[] #initialize action_utils for this action
 
         while not toVisit.isEmpty(): #while toVisit still has stuff in it
+            #new "State" tuple
             ns = toVisit.pop()
+            #calculate the utility of this state and add it to action utils
             nsu = self.getUtility(ns.gamestate, ns.beliefs)
             action_utils[ns.starting_action].append(nsu * UTIL_DISCOUNT**ns.depth)
 
             #only explore further if doesn't excede max search depth
             if ns.depth<MAX_SEARCH_DEPTH:
-                for action in ns.gamestate.getLegalActions(self.index):
+                successor_actions = ns.gamestate.getLegalActions(self.index)
+                if len(successor_actions)>1:#if there are several subsequent actions, remove the 'double back' option
+                    successor_actions.remove(game.Actions.reverseDirection(ns.prev_action))
+                #the above code should, in the case that we went north to get here, and we can go either north or south
+                #remove the option "south" from legal actions, so we do not needlessly double back
+                #if however we entered a dead end, and we can thus only double back, it allows that to occur
+
+                for action in successor_actions: #add all legal successors
                     newgs = ns.gamestate.generateSuccessor(self.index, action)
-                    nsb = self.genNewBeliefs(ns.beliefs, ns.gamestate)
-                    toVisit.push(State(ns.starting_action, newgs, nsb, ns.depth+1))
+                    nsb = self.genNewBeliefs(ns.beliefs, ns.gamestate) #generate the new beliefs for this state
+                    toVisit.push(State(ns.starting_action, newgs, nsb, ns.depth+1, action))
 
         #TODO: pick action based on highest average or highest sum?
         best_action = max(action_utils.keys(), key = lambda x:  sum(action_utils[x])/len(action_utils[x]))
