@@ -288,7 +288,7 @@ class HardwiredAgent(CaptureAgent):
                 if self.getPosDistToEnemy(space, enemy) <= self.getMazeDistance(my_pos, space) < 7:
                     zone.add(space)
                     break
-        # TODO: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
+        # Note: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
 
         return zone
     #called when the agent should procede home

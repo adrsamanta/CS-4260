@@ -8,7 +8,7 @@ import game
 from AgentExternals import *
 
 def createTeam(firstIndex, secondIndex, isRed,
-               first='HardwiredAgent', second='HardwiredAgent'):
+               first='UtilAgent', second='UtilAgent'):
     """
     This function should return a list of two agents that will form the
     team, initialized using firstIndex and secondIndex as their agent
@@ -35,7 +35,7 @@ class HLA:
     # calling each of these should just require passing in the current object as the self parameter
 
 
-class UtilAgen(CaptureAgent):
+class UtilAgent(CaptureAgent):
     def registerInitialState(self, gameState):
         """
         This method handles the initial setup of the
@@ -104,6 +104,7 @@ class UtilAgen(CaptureAgent):
         #prev action is the action taken to get to this state, to avoid checking the immediately previous position again
         State = namedtuple("State", ["starting_action", "gamestate", "beliefs", "depth", "prev_action"])
 
+
         #dictionary to track the utility of each state spawned off each starting action
         #action_utils[action] is a list of the utilities of all the states generated from this starting action
         action_utils = {}
@@ -152,25 +153,90 @@ class UtilAgen(CaptureAgent):
     #        Features/Weights
     #######################################
 
+    # <editor-fold desc="Features/Weights stuff">
+    Features = namedtuple("Features", ["e_ghost_dist", "e_pac_dist", "food_dist", "capsule_dist", "score",
+                                       "my_scared_moves", "enemy_scared_moves", "my_food", "home_dist", "enemy_food",
+                                       "safe_path_to_home"])
+
     def getUtility(self, gamestate, belief_distrib):
+
+        weights = self.getWeights(gamestate)
+        features = self.getFeatures(gamestate, belief_distrib)
         return 0
 
     def getWeights(self, gamestate):
         pass
 
-    def getFeatures(self, gamestate):
-        pass
+    def getFeatures(self, gamestate, belief_distrib):
+        feat = UtilAgent.Features()
+
+        e_ghost_dists=[]
+        e_pac_dists=[]
+        #for each enemy, calculate the distance to them, then add that distance to the list corresponding to their mode
+        for enemy in self.getOpponents(gamestate):
+            dist = self.getMyDistanceToEnemy(gamestate, enemy, belief_distrib)
+            if gamestate.getAgentState(enemy).isPacman:
+                e_pac_dists.append(dist)
+            else:
+                e_ghost_dists.append(dist)
+        feat.e_ghost_dist = e_ghost_dists
+        feat.e_pac_dist = e_pac_dists
+
+        feat.capsule_dist = self.getDistToNearestCapsule(gamestate)
+        feat.score = self.getScore(gamestate)
+        feat.my_scared_moves = self.getScaredMovesRemaining(gamestate)
+        feat.enemy_scared_moves = self.getScaredMovesRemaining(gamestate) #list
+        feat.my_food = self.getFoodEatenBySelf(gamestate)
+    # </editor-fold>
+
+
+    #######################################
+    #        Pathfinding Functions
+    #######################################
+
+    # <editor-fold desc="Pathfinding Stuff">
+    def genExclusionZones(self, gamestate):
+        # list of enemy ghosts we need to avoid
+        enemy_ghosts = [g for g in self.getOpponents(gamestate) if
+                        not gamestate.getAgentState(g).isPacman and
+                        gamestate.getAgentState(g).scaredTimer == 0]  # if ghosts are scared, no exclusion zone
+        my_pos = self.getMyPos(gamestate)
+        zone = set()
+        if not enemy_ghosts:  # short circuit if no enemy ghosts
+            return zone
+        # easy way to get all enemy spaces is to get the keys of border distances
+        for space in self.data.borderDistances.keys():
+            # check each enemy
+            for enemy in enemy_ghosts:
+                # if this spot is closer to the enemy then it is to us, then don't go there
+                # currently is very extreme rule, might need to be tuned in the future
+                # TUNE 1: only matters if space is nearer than 7, otherwise initial search has no food it can go to
+                if self.getPosDistToEnemy(space, enemy) <= self.getMazeDistance(my_pos, space) < 7:
+                    zone.add(space)
+                    break
+        # Note: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
+
+        return zone
+    # </editor-fold>
 
 
     #######################################
     #        Utility Info Functions
     #######################################
 
+    # <editor-fold desc="Utility Info">
     def getScaredMovesRemaining(self, gameState):
         return gameState.getAgentState(self.index).scaredTimer
 
+    def getEnemyAgentScaredMovesRemaining(self, gameState):
+        return [gameState.getAgentState(o).scaredTimer for o in self.getOpponents(gameState)]
+
     def getFoodEatenByEnemyAgent(self, gameState, agentIndex):
         return gameState.getAgentState(agentIndex).numCarrying
+
+    #food in our stomach
+    def getFoodEatenBySelf(self, gameState):
+        return gameState.getAgentState(self.index).numCarrying
 
     # checks which side of the board a given position is, returns true if its my side
     def onMySide(self, pos):
@@ -182,10 +248,41 @@ class UtilAgen(CaptureAgent):
         else:
             return pos[0] >= halfway
 
+    def getDistToNearestCapsule(self, gameState):
+        try:
+            return min([self.getMazeDistance(gameState.getAgentState(self.index).getPosition(), cap) for cap in
+                        self.getCapsules(gameState)])
+        except ValueError:
+            return 0
+
+    #calculates the most likely distance between spos and the given enemy, using the given belief distribution
+    #if given belief distribution is None, it will use the current agent distribution
+    #if the position of that enemy is known, then the exact distance is returned
+    #otherwise, the distance returned is the sum over all possible positions
+    # of the product of the probability the enemy is at that position and the distance to that position
+    def getDistanceToEnemy(self, spos, enemyI, beliefs=None):
+        if not beliefs and enemyI in self.knownEnemies:
+            return self.getMazeDistance(spos, self.knownEnemies[enemyI])
+        else:
+            if not beliefs:
+                beliefs = self.getmDistribs(enemyI)
+            return sum(prob*self.getMazeDistance(spos, epos) for prob, epos in beliefs)
+
+    #get the distance from this agents position in gamestate to the enemy with index enemyI
+    #see 'getDistanceToEnemy' for details
+    def getMyDistanceToEnemy(self, gamestate, enemyI, beliefs=None):
+        return self.getDistanceToEnemy(self.getMyPos(gamestate), enemyI)
+
+    def getMyPos(self, gameState):
+        return gameState.getAgentPosition(self.index)
+    # </editor-fold>
+
 
     ##################################################
     #       POSITION INFERENCE
     ##################################################
+
+
 
     def _setKnownPosDist(self, agentIndex, knownPos):
         self.knownEnemies[agentIndex] = knownPos
@@ -336,3 +433,6 @@ class UtilAgen(CaptureAgent):
             else:
                 # do inference based on distance
                 self.positionDistanceInfer(i)
+
+
+

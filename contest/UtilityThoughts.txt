@@ -22,6 +22,7 @@
         -I think this should be a binary feature
     distance to enenmy pacmen
         make sure that eating the pacmen (reducing the enemy food) causes a net gain in utility
+
     distance to food
         -distance problem
     score
