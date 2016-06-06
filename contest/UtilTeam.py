@@ -162,31 +162,55 @@ class UtilAgent(CaptureAgent):
 
         weights = self.getWeights(gamestate)
         features = self.getFeatures(gamestate, belief_distrib)
+        for w, f in zip(weights, features):
+            pass
         return 0
 
     def getWeights(self, gamestate):
         pass
+        return 0
 
     def getFeatures(self, gamestate, belief_distrib):
         feat = UtilAgent.Features()
 
         e_ghost_dists=[]
         e_pac_dists=[]
-        #for each enemy, calculate the distance to them, then add that distance to the list corresponding to their mode
+        e_food=[]
+        #do calculations that occur for each enemy
         for enemy in self.getOpponents(gamestate):
+            # for each enemy, calculate the distance to them, then add that distance to the list corresponding to their mode
             dist = self.getMyDistanceToEnemy(gamestate, enemy, belief_distrib)
             if gamestate.getAgentState(enemy).isPacman:
                 e_pac_dists.append(dist)
             else:
                 e_ghost_dists.append(dist)
+
+            e_food.append(gamestate.getAgentState(enemy).numCarrying)
         feat.e_ghost_dist = e_ghost_dists
         feat.e_pac_dist = e_pac_dists
+
+        feat.food_dist = self.calcFoodDist(gamestate)
 
         feat.capsule_dist = self.getDistToNearestCapsule(gamestate)
         feat.score = self.getScore(gamestate)
         feat.my_scared_moves = self.getScaredMovesRemaining(gamestate)
-        feat.enemy_scared_moves = self.getScaredMovesRemaining(gamestate) #list
+        feat.enemy_scared_moves = self.getScaredMovesRemaining(gamestate) #TODO: factor this out into above loop?
         feat.my_food = self.getFoodEatenBySelf(gamestate)
+        feat.enemy_food = e_food
+
+        if self.onMySide(self.getMyPos(gamestate)):
+            feat.safe_path_to_home=True
+            feat.home_dist=0
+        else:
+            path_home = self.goHomeAction(gamestate, belief_distrib)
+            if path_home:
+                feat.safe_path_to_home = True
+                feat.home_dist = len(path_home)
+            else:
+                #no safe path home
+                feat.safe_path_to_home = False
+                feat.home_dist = -1 #set to -1 to indicate bad value
+        return feat
     # </editor-fold>
 
 
@@ -195,7 +219,10 @@ class UtilAgent(CaptureAgent):
     #######################################
 
     # <editor-fold desc="Pathfinding Stuff">
-    def genExclusionZones(self, gamestate):
+
+    #TODO: Check to see if this should be more utility-esque
+    #creates exclusion zones around enemy ghosts
+    def genExclusionZones(self, gamestate, beliefs):
         # list of enemy ghosts we need to avoid
         enemy_ghosts = [g for g in self.getOpponents(gamestate) if
                         not gamestate.getAgentState(g).isPacman and
@@ -211,12 +238,42 @@ class UtilAgent(CaptureAgent):
                 # if this spot is closer to the enemy then it is to us, then don't go there
                 # currently is very extreme rule, might need to be tuned in the future
                 # TUNE 1: only matters if space is nearer than 7, otherwise initial search has no food it can go to
-                if self.getPosDistToEnemy(space, enemy) <= self.getMazeDistance(my_pos, space) < 7:
+                if self.getDistanceToEnemy(space, enemy, beliefs) <= self.getMazeDistance(my_pos, space) < 7:
                     zone.add(space)
                     break
         # Note: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
 
         return zone
+
+        # called when the agent should procede home
+    def goHomeAction(self, gamestate, beliefs):
+
+        # find shortest path to home
+        # generate exclusion zones around the enemies, find shortest path that doesn't go through an exclusion zone
+
+        ez = self.genExclusionZones(gamestate, beliefs)
+
+        goHomeProb = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate, ez)
+
+        def heuristic(state, problem):
+            if state in self.data.borderDistances:
+                return self.data.borderDistances[state]
+            else:
+                return 0
+
+        path, _ = search.astar(goHomeProb, heuristic)
+        # if not path:
+            # # relax the exclusion zones to only be where the enemy is
+            # ghp2 = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate,
+            #                        list(self.knownEnemies.values()))
+            # path, _ = search.astar(ghp2, heuristic)
+            # if not path:
+            #     # still no path home, probably screwed, just stop and pray
+            #     path = [game.Directions.STOP]  # just wait, because can't go anywhere
+            # # hollup
+            # pass
+        return path # return the first action in the path
+
     # </editor-fold>
 
 
@@ -275,6 +332,24 @@ class UtilAgent(CaptureAgent):
 
     def getMyPos(self, gameState):
         return gameState.getAgentPosition(self.index)
+
+    #calculates the distance to the nearest food
+    def calcFoodDist(self, gamestate):
+        #TODO: consider improving this
+        foodList = self.getFood(gamestate).asList()
+        myPos = self.getMyPos(gamestate)
+        if len(foodList):
+            minDist = self.getMazeDistance(myPos, foodList[0])
+            for pos in foodList:
+                dist = self.getMazeDistance(myPos, pos)
+                if dist < minDist:
+                    minDist = dist
+                    if dist == 1:
+                        break
+            return minDist
+        else:
+            return 0
+
     # </editor-fold>
 
 
