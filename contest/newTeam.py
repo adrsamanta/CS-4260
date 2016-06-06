@@ -183,7 +183,7 @@ class HardwiredAgent(CaptureAgent):
             self.offensive=self.data.getOffensive()
         #print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-
+        self.data.reset_food_target(self.index)
         bestAction = self.actionSearch(gameState)
         # bestAction, utility= self.actionSearch(self.index, gameState)
         # newPos=game.Actions.getSuccessor(self.getMyPos(gameState), bestAction)
@@ -362,6 +362,7 @@ class HardwiredAgent(CaptureAgent):
         path, _ = search.astar(prob) #use a-star, null heuristic
         if not path:
             #hollup
+            HLA.goHome(self, gamestate)
             pass
         return path[0]
         #TODO: consider adding option to abandon this choice if it's shitty
@@ -380,6 +381,7 @@ class HardwiredAgent(CaptureAgent):
         prob = PacmanPosSearch(self.getMyPos(gamestate), goals, gamestate, ez)
 
         path, target = search.astar(prob)
+        self.data.set_food_target(self.index, target)
         if path == None:
             #no good food to eat, just go home
             return HLA.goHome(self, gamestate)

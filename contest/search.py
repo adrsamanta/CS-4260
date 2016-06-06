@@ -232,7 +232,8 @@ def aStarSearch(problem, heuristic=nullHeuristic):
                     newActions.append(nextAction)
                     newChild = [nextState, newActions, pathCost + cost, pathCost + cost + heuristic(nextState, problem)]
                     toVisit.push(newChild)
-
+    #failed to find path
+    return None, None
 
 # Abbreviations
 bfs = breadthFirstSearch
