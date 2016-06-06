@@ -819,7 +819,6 @@ class RealAgent(CaptureAgent):
         possiblePositions = util.Counter()
 
         for pos in self.legalPositions:
-            #if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
             if beliefs[pos] > 0:
                 newPosDist = self.getPositionDistribution(agentIndex, pos, gameState)
                 for position, prob in newPosDist.items():
@@ -894,7 +893,7 @@ class RealAgent(CaptureAgent):
                 else:
                     #check if any food was eaten. If so, don't do inference. if not, do inference
                     if not self.checkFood():
-                        self.positionMoveInfer(i)
+                        self.positionDistanceInfer(i)
                         #positionDistanceInfer returns the new distribution, so update the saved distribution
                         self.setDistrib(i, self.positionMoveInfer(i))
             else:

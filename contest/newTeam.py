@@ -785,7 +785,7 @@ class HardwiredAgent(CaptureAgent):
                 else:
                     #check if any food was eaten. If so, don't do inference. if not, do inference
                     if not self.checkFood():
-                        self.positionMoveInfer(i)
+                        self.positionDistanceInfer(i)
                         #positionDistanceInfer returns the new distribution, so update the saved distribution
                         self.setDistrib(i, self.positionMoveInfer(i))
             else:
