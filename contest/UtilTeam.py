@@ -213,7 +213,7 @@ class UtilAgent(CaptureAgent):
         weights.e_pac_dist = epacutil
         weights.food_dist = lambda gs, d : 1.1/d if d>0 else 0
         weights.capsule_dist = lambda gs, d : .8/d if d>0 else 0
-        weights.score = lambda gs, d: 1.2*d
+        weights.score = lambda gs, d: 1.4*d
         weights.my_scared_moves = lambda gs, m : 0
         weights.enemy_scared_moves = lambda gs, m: .2*m
         weights.my_food = lambda gs, food: 1.2*food
