@@ -147,8 +147,18 @@ class UtilAgent(CaptureAgent):
     #######################################
 
     def genNewBeliefs(self, oldBeliefs, gamestate):
-        return {}
+        ### Limitations
+        #Doesn't account for other players on this team moving
+        #very basic move logic
+        #doesn't update position in gamestate
+        #TODO: Idea for updating pos in gs: have it move to a position with the assumed probability it goes there
+            # TODO: (see position distribution, if goes .8 it goes to a place, it moves there w/ prob .8)
+        ####
+        nb = [None]*len(oldBeliefs)
+        for i in self.getOpponents(gamestate):
+            nb[i]=self.positionMoveInfer(i, gamestate, oldBeliefs)
 
+        return nb
     #######################################
     #        Features/Weights
     #######################################
