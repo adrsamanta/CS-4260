@@ -7,6 +7,23 @@ from captureAgents import CaptureAgent
 import random, util
 import game
 from AgentExternals import *
+import logging
+from datetime import datetime
+
+timestamp='{:%m-%d_%H.%M.%S}'.format(datetime.now())
+logger = logging.getLogger("base")
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.FileHandler("logs/all_"+timestamp+".txt"))
+
+#currently not in use, will use later if needed
+off_log = logging.getLogger("base.offense")
+offense_handler=logging.FileHandler("logs/offense_"+timestamp+".txt")
+off_log.addHandler(offense_handler)
+
+def_log = logging.getLogger("base.defense")
+defense_handler=logging.FileHandler("logs/defense_"+timestamp+".txt")
+def_log.addHandler(defense_handler)
+
 
 def createTeam(firstIndex, secondIndex, isRed,
                first='UtilAgent', second='UtilAgent'):
@@ -76,11 +93,16 @@ class UtilAgent(CaptureAgent):
 
         self.legalPositions = self.data.legalPositions
         self.offensive = self.data.getOffensive()
+        if self.offensive:
+            self.logger = off_log
+        else:
+            self.logger = def_log
+
 
         # set up distribution list that will hold belief distributions for agents
 
     def chooseAction(self, gameState):
-
+        self.logger.info("Beginning new move")
         self.knownEnemies = {}  # enemy position, key is enemy index
         self.data.logFood(gameState)
         self.updatePosDist(gameState)
@@ -112,7 +134,10 @@ class UtilAgent(CaptureAgent):
         action_utils = {}
 
         #create initial states
-        for action in gamestate.getLegalActions(self.index):
+        legal_a=gamestate.getLegalActions(self.index)
+        for action in legal_a:
+            # if action == game.Directions.STOP and len(legal_a)>2:
+            #     continue #only consider stop if there is only 1 alternative
             newgs = gamestate.generateSuccessor(self.index, action)
             toVisit.push(State(action, newgs, self.data.mDistribs, 0, action))
             action_utils[action]=[] #initialize action_utils for this action
@@ -121,6 +146,7 @@ class UtilAgent(CaptureAgent):
             #new "State" tuple
             ns = toVisit.pop()
             #calculate the utility of this state and add it to action utils
+            self.logger.debug("\nconsidering position %s", self.getMyPos(ns.gamestate))
             nsu = self.getUtility(ns.gamestate, ns.beliefs)
             action_utils[ns.starting_action].append(nsu * UTIL_DISCOUNT**ns.depth)
 
@@ -141,7 +167,7 @@ class UtilAgent(CaptureAgent):
         #TODO: pick action based on highest average or highest sum?
         avg_action_util = [(u, sum(action_utils[u])/len(action_utils[u])) for u in action_utils.keys()]
         best_action = max(action_utils.keys(), key = lambda x:  sum(action_utils[x])/len(action_utils[x]))
-
+        self.logger.info("Action: %s \n", best_action)
         return best_action
 
 
@@ -176,8 +202,10 @@ class UtilAgent(CaptureAgent):
         weights = self.getWeights(gamestate)
         features = self.getFeatures(gamestate, belief_distrib)
         util = 0
-        for w, f in zip(weights, features):
-            util+=w(gamestate, f)
+        for w, f, n in zip(weights, features, weights._fields):
+            delta = w(gamestate, f)
+            util+= delta
+            self.logger.debug("Feature %s with value %s changed utility %f to new total %f", n, f, delta, util)
         return util
 
     #called weights, but really each entry is a function that calculates the utility from the given feature
@@ -186,14 +214,21 @@ class UtilAgent(CaptureAgent):
         weights = UtilAgent.Features(*range(len(UtilAgent.Features._fields)))
 
         def eghostutil(gs, ghost_dists):
-            if gamestate.getAgentState(self.index).isPacman:
-                return sum(-1.3/d for d in ghost_dists if d>0)
+            if gamestate.getAgentState(self.index).isPacman and ghost_dists:
+                return min(-1./d for d in ghost_dists if d>0)
             else:
                 return 0
 
 
         def epacutil(gs, pac_dists):
-            u = sum(1./d for d in pac_dists if d>0)
+            u=0
+            for d in pac_dists:
+                if d>0:
+                    u+=1./d
+                else:
+                    u+=1.3
+            if len(pac_dists)==0:
+                u+=1.3
             if self.offensive:
                 return .5*u
             else:
@@ -209,11 +244,26 @@ class UtilAgent(CaptureAgent):
             else:
                 return 0
 
+        def score_util(gs, s):
+            if s!=0:
+                return 1.8*s
+            else:
+                return -.5
+
+        def food_dist_u(gs, d):
+            if d>0:
+                if self.getScore(gs)<=0:
+                    return 1.7/d
+                else:
+                    return 1.3/d
+            else:
+                return 0
+
         weights.e_ghost_dist = eghostutil
         weights.e_pac_dist = epacutil
-        weights.food_dist = lambda gs, d : 1.1/d if d>0 else 0
+        weights.food_dist = food_dist_u
         weights.capsule_dist = lambda gs, d : .8/d if d>0 else 0
-        weights.score = lambda gs, d: 1.4*d
+        weights.score = score_util
         weights.my_scared_moves = lambda gs, m : 0
         weights.enemy_scared_moves = lambda gs, m: .2*m
         weights.my_food = lambda gs, food: 1.2*food
