@@ -57,8 +57,6 @@ class TestAgent(CaptureAgent):
         pos = otherState.getPosition()
         #print('TestAgent: ',pos)
 
-        p2=gameState.data.layout.agentPositions[self.getOpponents(gameState)[0]][-1]
-        g=5
         '''
         You should change this in your own agent.
         '''

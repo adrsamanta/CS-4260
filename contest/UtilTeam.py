@@ -1,4 +1,5 @@
 from collections import namedtuple
+from recordclass import recordclass
 
 import search
 from capture import SIGHT_RANGE
@@ -90,13 +91,14 @@ class UtilAgent(CaptureAgent):
         # print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
 
+        return self.action_search(gameState)
 
     def action_search(self, gamestate):
         #how much to discount future utility by, so if a state is 3 in the future, its utility is UTIL_DISCOUNT**3 * calculated_utility
         UTIL_DISCOUNT = .8
 
         #maximum depth of search
-        MAX_SEARCH_DEPTH = 5
+        MAX_SEARCH_DEPTH = 0
         #queue that holds future states to visit
         toVisit = util.Queue()
         #each item on toVisit is a tuple (starting action, gamestate, beliefs, depth, prev_action)
@@ -137,6 +139,7 @@ class UtilAgent(CaptureAgent):
                     toVisit.push(State(ns.starting_action, newgs, nsb, ns.depth+1, action))
 
         #TODO: pick action based on highest average or highest sum?
+        avg_action_util = [(u, sum(action_utils[u])/len(action_utils[u])) for u in action_utils.keys()]
         best_action = max(action_utils.keys(), key = lambda x:  sum(action_utils[x])/len(action_utils[x]))
 
         return best_action
@@ -156,7 +159,7 @@ class UtilAgent(CaptureAgent):
         ####
         nb = [None]*len(oldBeliefs)
         for i in self.getOpponents(gamestate):
-            nb[i]=self.positionMoveInfer(i, gamestate, oldBeliefs)
+            nb[i]=self.positionMoveInfer(i, gamestate, oldBeliefs[i])
 
         return nb
     #######################################
@@ -164,7 +167,7 @@ class UtilAgent(CaptureAgent):
     #######################################
 
     # <editor-fold desc="Features/Weights stuff">
-    Features = namedtuple("Features", ["e_ghost_dist", "e_pac_dist", "food_dist", "capsule_dist", "score",
+    Features = recordclass("Features", ["e_ghost_dist", "e_pac_dist", "food_dist", "capsule_dist", "score",
                                        "my_scared_moves", "enemy_scared_moves", "my_food", "home_dist", "enemy_food",
                                        "safe_path_to_home"])
 
@@ -179,32 +182,51 @@ class UtilAgent(CaptureAgent):
 
     #called weights, but really each entry is a function that calculates the utility from the given feature
     def getWeights(self, gamestate):
-        weights = UtilAgent.Features()
+        #fill with dummy values
+        weights = UtilAgent.Features(*range(len(UtilAgent.Features._fields)))
 
-        def eghostutil(gamestate, ghost_dists):
-            return sum(-2/d for d in ghost_dists)
+        def eghostutil(gs, ghost_dists):
+            if gamestate.getAgentState(self.index).isPacman:
+                return sum(-1.3/d for d in ghost_dists if d>0)
+            else:
+                return 0
 
-        def epacutil(gamestate, pac_dists):
-            return sum(1/d for d in pac_dists)
 
+        def epacutil(gs, pac_dists):
+            u = sum(1./d for d in pac_dists if d>0)
+            if self.offensive:
+                return .5*u
+            else:
+                return u
+
+        def efoodutil(gs, efl):
+            return sum(-.8*ef for ef in efl)
+
+        def home_dist(gs, d):
+            mfood =  self.getFoodEatenBySelf(gamestate)
+            if mfood>0:
+                return .5*mfood*.8/d
+            else:
+                return 0
 
         weights.e_ghost_dist = eghostutil
         weights.e_pac_dist = epacutil
-        weights.food_dist = lambda gs, d : 1/d
-        weights.capsule_dist = lambda gs, d : .8/d
+        weights.food_dist = lambda gs, d : 1.1/d if d>0 else 0
+        weights.capsule_dist = lambda gs, d : .8/d if d>0 else 0
         weights.score = lambda gs, d: 1.2*d
         weights.my_scared_moves = lambda gs, m : 0
         weights.enemy_scared_moves = lambda gs, m: .2*m
         weights.my_food = lambda gs, food: 1.2*food
-        weights.home_dist = lambda gs, d: 1/d
-        weights.enemy_food = lambda gs, ef: -.8*ef
+        weights.home_dist = home_dist
+        weights.enemy_food = efoodutil
         weights.safe_path_to_home = lambda gs, b: 1 if b else -1
 
         return weights
 
     #features of the current position
     def getFeatures(self, gamestate, belief_distrib):
-        feat = UtilAgent.Features()
+        #flesh with dummy values
+        feat = UtilAgent.Features(*range(len(UtilAgent.Features._fields)))
 
         e_ghost_dists=[]
         e_pac_dists=[]
@@ -271,7 +293,7 @@ class UtilAgent(CaptureAgent):
                 # if this spot is closer to the enemy then it is to us, then don't go there
                 # currently is very extreme rule, might need to be tuned in the future
                 # TUNE 1: only matters if space is nearer than 7, otherwise initial search has no food it can go to
-                if self.getDistanceToEnemy(space, enemy, beliefs) <= self.getMazeDistance(my_pos, space) < 7:
+                if self.getDistanceToEnemy(space, enemy, beliefs[enemy]) <= self.getMazeDistance(my_pos, space) < 7:
                     zone.add(space)
                     break
         # Note: if needed, can probably rig up a way to color the map with these by pretending they're belief distributions
@@ -356,7 +378,7 @@ class UtilAgent(CaptureAgent):
         else:
             if not beliefs:
                 beliefs = self.getmDistribs(enemyI)
-            return sum(prob*self.getMazeDistance(spos, epos) for prob, epos in beliefs)
+            return sum(prob*self.getMazeDistance(spos, epos) for epos, prob in beliefs.items() if prob>0)
 
     #get the distance from this agents position in gamestate to the enemy with index enemyI
     #see 'getDistanceToEnemy' for details
@@ -463,7 +485,7 @@ class UtilAgent(CaptureAgent):
         for pos in self.legalPositions:
             # if the distance is less than SIGHT_RANGE, don't need to do inference on this position, bc we know the agent isn't there
             if beliefs[pos] > 0:
-                newPosDist = self.getPositionDistribution(agentIndex, pos, gameState)
+                newPosDist = self.getPositionDistribution(pos, gameState)
                 for position, prob in newPosDist.items():
                     possiblePositions[position] += prob * beliefs[pos]
 
@@ -471,7 +493,7 @@ class UtilAgent(CaptureAgent):
         return possiblePositions
 
     # returns a probability distribution for the agents subsequent position, given that it is at curPos
-    def getPositionDistribution(self, agentIndex, curPos, gameState=None):
+    def getPositionDistribution(self, curPos, gameState=None):
         if not gameState:
             gameState = self.getCurrentObservation()
         neighbors = game.Actions.getLegalNeighbors(curPos, gameState.getWalls())
