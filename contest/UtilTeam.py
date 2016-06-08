@@ -162,14 +162,37 @@ class UtilAgent(CaptureAgent):
 
         weights = self.getWeights(gamestate)
         features = self.getFeatures(gamestate, belief_distrib)
+        util = 0
         for w, f in zip(weights, features):
-            pass
-        return 0
+            util+=w(gamestate, f)
+        return util
 
+    #called weights, but really each entry is a function that calculates the utility from the given feature
     def getWeights(self, gamestate):
-        pass
-        return 0
+        weights = UtilAgent.Features()
 
+        def eghostutil(gamestate, ghost_dists):
+            return sum(-2/d for d in ghost_dists)
+
+        def epacutil(gamestate, pac_dists):
+            return sum(1/d for d in pac_dists)
+
+
+        weights.e_ghost_dist = eghostutil
+        weights.e_pac_dist = epacutil
+        weights.food_dist = lambda gs, d : 1/d
+        weights.capsule_dist = lambda gs, d : .8/d
+        weights.score = lambda gs, d: 1.2*d
+        weights.my_scared_moves = lambda gs, m : 0
+        weights.enemy_scared_moves = lambda gs, m: .2*m
+        weights.my_food = lambda gs, food: 1.2*food
+        weights.home_dist = lambda gs, d: 1/d
+        weights.enemy_food = lambda gs, ef: -.8*ef
+        weights.safe_path_to_home = lambda gs, b: 1 if b else -1
+
+        return weights
+
+    #features of the current position
     def getFeatures(self, gamestate, belief_distrib):
         feat = UtilAgent.Features()
 
