@@ -51,4 +51,5 @@ to deal with with distance problem, take reciprocal of distance,
 
 
 
-
+Found bugs:
+belief distribution in utility search is all 0s when it shouldnt be

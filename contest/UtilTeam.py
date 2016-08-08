@@ -16,13 +16,13 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(logging.FileHandler("logs/all_"+timestamp+".txt"))
 
 #currently not in use, will use later if needed
-off_log = logging.getLogger("base.offense")
-offense_handler=logging.FileHandler("logs/offense_"+timestamp+".txt")
-off_log.addHandler(offense_handler)
-
-def_log = logging.getLogger("base.defense")
-defense_handler=logging.FileHandler("logs/defense_"+timestamp+".txt")
-def_log.addHandler(defense_handler)
+# off_log = logging.getLogger("base.offense")
+# offense_handler=logging.FileHandler("logs/offense_"+timestamp+".txt")
+# off_log.addHandler(offense_handler)
+#
+# def_log = logging.getLogger("base.defense")
+# defense_handler=logging.FileHandler("logs/defense_"+timestamp+".txt")
+# def_log.addHandler(defense_handler)
 
 
 def createTeam(firstIndex, secondIndex, isRed,
@@ -94,9 +94,9 @@ class UtilAgent(CaptureAgent):
         self.legalPositions = self.data.legalPositions
         self.offensive = self.data.getOffensive()
         if self.offensive:
-            self.logger = off_log
+            self.logger = logger
         else:
-            self.logger = def_log
+            self.logger = logger
 
 
         # set up distribution list that will hold belief distributions for agents
@@ -112,15 +112,20 @@ class UtilAgent(CaptureAgent):
             self.offensive = self.data.getOffensive()
         # print "infer time: ", time()-startTime
         self.displayDistributionsOverPositions(self.data.mDistribs)
-
-        return self.action_search(gameState)
+        action = self.action_search(gameState)
+        new_pos = game.Actions.getSuccessor(self.getMyPos(gameState), action)
+        if new_pos in self.knownEnemies.values():
+            for e, p in self.knownEnemies.items():
+                if new_pos==p:
+                    self._capturedAgent(e)
+        return action
 
     def action_search(self, gamestate):
         #how much to discount future utility by, so if a state is 3 in the future, its utility is UTIL_DISCOUNT**3 * calculated_utility
         UTIL_DISCOUNT = .8
 
         #maximum depth of search
-        MAX_SEARCH_DEPTH = 0
+        MAX_SEARCH_DEPTH = 3
         #queue that holds future states to visit
         toVisit = util.Queue()
         #each item on toVisit is a tuple (starting action, gamestate, beliefs, depth, prev_action)
@@ -158,15 +163,23 @@ class UtilAgent(CaptureAgent):
                 #the above code should, in the case that we went north to get here, and we can go either north or south
                 #remove the option "south" from legal actions, so we do not needlessly double back
                 #if however we entered a dead end, and we can thus only double back, it allows that to occur
-
+                nsb = self.genNewBeliefs(ns.beliefs, ns.gamestate)  # generate the new beliefs for this state
                 for action in successor_actions: #add all legal successors
                     newgs = ns.gamestate.generateSuccessor(self.index, action)
-                    nsb = self.genNewBeliefs(ns.beliefs, ns.gamestate) #generate the new beliefs for this state
+
                     toVisit.push(State(ns.starting_action, newgs, nsb, ns.depth+1, action))
 
         #TODO: pick action based on highest average or highest sum?
         avg_action_util = [(u, sum(action_utils[u])/len(action_utils[u])) for u in action_utils.keys()]
-        best_action = max(action_utils.keys(), key = lambda x:  sum(action_utils[x])/len(action_utils[x]))
+        #TODO: figure out what to do here
+        #trim all lists to be the same length
+        #otherwise the action with the fewest possibilities will often win, as it's highest utility course will
+        #pull the average more than that of the other courses
+        min_length = min(len(x) for x in action_utils.values())
+
+        new_pairs = {a : sorted(v, reverse=True)[:min_length] for a, v in action_utils.items()}
+        avg_new_pair = [(u, sum(new_pairs[u])/len(new_pairs[u])) for u in new_pairs.keys()]
+        best_action = max(new_pairs.keys(), key = lambda x:  sum(new_pairs[x])/len(new_pairs[x]))
         self.logger.info("Action: %s \n", best_action)
         return best_action
 
@@ -367,7 +380,7 @@ class UtilAgent(CaptureAgent):
                 return 0
 
         path, _ = search.astar(goHomeProb, heuristic)
-        # if not path:
+        if not path:
             # # relax the exclusion zones to only be where the enemy is
             # ghp2 = PacmanPosSearch(self.getMyPos(gamestate), self.data.borderPositions, gamestate,
             #                        list(self.knownEnemies.values()))
@@ -376,7 +389,7 @@ class UtilAgent(CaptureAgent):
             #     # still no path home, probably screwed, just stop and pray
             #     path = [game.Directions.STOP]  # just wait, because can't go anywhere
             # # hollup
-            # pass
+            pass
         return path # return the first action in the path
 
     # </editor-fold>
@@ -428,7 +441,13 @@ class UtilAgent(CaptureAgent):
         else:
             if not beliefs:
                 beliefs = self.getmDistribs(enemyI)
-            return sum(prob*self.getMazeDistance(spos, epos) for epos, prob in beliefs.items() if prob>0)
+
+            weighted_dists = [prob*self.getMazeDistance(spos, epos) for epos, prob in beliefs.items() if prob>0]
+            if weighted_dists:
+                return sum(weighted_dists)
+            else:
+                #we don't have any idea where the enemy is, but we know he's at least sight range units away, so return that
+                return SIGHT_RANGE+1
 
     #get the distance from this agents position in gamestate to the enemy with index enemyI
     #see 'getDistanceToEnemy' for details
@@ -471,7 +490,7 @@ class UtilAgent(CaptureAgent):
         dist[knownPos] = 1.0
 
     def _capturedAgent(self, agentIndex):
-        self._setKnownPosDist(agentIndex, self.getCurrentObservation().getInitialPosition(agentIndex))
+        self._setKnownPosDist(agentIndex, self.getCurrentObservation().getInitialAgentPosition(agentIndex))
 
     def getPrevPlayer(self):
         return (self.index - 1) % self.getCurrentObservation().getNumAgents()
@@ -597,8 +616,8 @@ class UtilAgent(CaptureAgent):
             gameState = self.getCurrentObservation()
         for i in self.getOpponents(gameState):
             if gameState.getAgentPosition(i):  # can observe the given agent
-
                 self._setKnownPosDist(i, gameState.getAgentPosition(i))
+
             # Only do move infer on the agent right before the current agent, as both agents haven't moved since last call
             # (if this is agent 3, agent 2 just moved, but agent 4 has not moved since agent 1 did inference.
             elif self.getPrevPlayer() == i:  # i is the previous agent
@@ -607,9 +626,10 @@ class UtilAgent(CaptureAgent):
                 else:
                     # check if any food was eaten. If so, don't do inference. if not, do inference
                     if not self.checkFood():
-                        self.positionDistanceInfer(i)
                         # positionDistanceInfer returns the new distribution, so update the saved distribution
                         self.setDistrib(i, self.positionMoveInfer(i))
+                        self.positionDistanceInfer(i)
+
             else:
                 # do inference based on distance
                 self.positionDistanceInfer(i)
