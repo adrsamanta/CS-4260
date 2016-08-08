@@ -12,6 +12,8 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 #TODO LIST:
+#MIN IS AN EMPTY SEQUENCE EXCEPTION
+#LINE 512 ADDING += TO NONE
 """
 -add inference to state space search
     save return val of positionMoveInfer in State, use that as distrib. Might need to change mDistribs a lot, idk
