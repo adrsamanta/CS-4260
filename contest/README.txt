@@ -1,4 +1,4 @@
-This folder contains the code for a competitive version of pacman, which is described [here](http://rawgit.com/adrsamanta/CS-4260/master/contest/contest.html). 
+This folder contains the code for a competitive version of pacman, which is described here: http://rawgit.com/adrsamanta/CS-4260/master/contest/contest.html
 
 I have written several different agents to play this game, one for class, the rest as a personal project. 
 
